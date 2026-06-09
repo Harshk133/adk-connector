@@ -26,6 +26,10 @@ __all__ = [
     "EventRouter",
     "ResponseFormatter",
     "SessionManager",
-]
-
-
+]# Dynamic import mapping to allow `from adk_connectors.telegram import ...`
+try:
+    import adk_connectors_telegram as _telegram
+    import sys
+    sys.modules["adk_connectors.telegram"] = _telegram
+except ImportError:
+    pass
