@@ -1,7 +1,6 @@
 import pytest
-from adk_connectors import ResponseFormatter, SessionManager, MemorySessionStorage, SessionConfig
+from adk_connectors import ResponseFormatter, SessionManager, MemorySessionStorage, SessionConfig, JSONFileSessionStorage, SessionModel
 from adk_connectors.telegram import TelegramFormatter, TelegramParser, TelegramConnector
-
 
 
 def test_telegram_formatter_markdown():
@@ -59,3 +58,63 @@ async def test_session_manager():
     
     session2 = await manager.get_or_create("user123", "telegram")
     assert session.adk_session_id == session2.adk_session_id
+
+@pytest.mark.asyncio
+async def test_session_manager_with_user_mapping():
+    storage = MemorySessionStorage()
+    config = SessionConfig(ttl_seconds=1REMOVED_VALUE, user_mapping={"telegram:12345": "user"})
+    manager = SessionManager(storage, config)
+    
+    session = await manager.get_or_create("12345", "telegram")
+    assert session is not None
+    assert session.platform_key == "telegram:12345"
+    assert session.adk_user_id == "user"
+
+@pytest.mark.asyncio
+async def test_json_file_session_storage(tmp_path):
+    file_path = str(tmp_path / "sessions.json")
+    storage = JSONFileSessionStorage(file_path)
+    
+    session_model = SessionModel(
+        platform_key="telegram:123",
+        adk_session_id="session-456",
+        adk_user_id="user-789",
+        created_at=1REMOVED_VALUEREMOVED_VALUE.REMOVED_VALUE,
+        last_active=1REMOVED_VALUE5.REMOVED_VALUE,
+        platform_metadata={"foo": "bar"}
+    )
+    
+    await storage.set("telegram:123", session_model)
+    
+    # Load from another storage pointing to same file
+    storage2 = JSONFileSessionStorage(file_path)
+    loaded = await storage2.get("telegram:123")
+    assert loaded is not None
+    assert loaded.adk_session_id == "session-456"
+    assert loaded.adk_user_id == "user-789"
+    assert loaded.platform_metadata == {"foo": "bar"}
+
+@pytest.mark.asyncio
+async def test_session_management_across_device_auto_init(tmp_path):
+    import sys
+    from adk_connectors import ConnectorManager
+    from google.adk.sessions.sqlite_session_service import SqliteSessionService
+    from adk_connectors.storage.json_file import JSONFileSessionStorage
+    from google.adk.agents.llm_agent import Agent
+    
+    agent = Agent(name="test_agent", model="gemini-2.REMOVED_VALUE-flash")
+    
+    class MockMain:
+        __file__ = str(tmp_path / "run_agent.py")
+        
+    sys.modules['__main__'] = MockMain
+    
+    manager = ConnectorManager(
+        agent=agent,
+        session_management_across_device=True,
+        dev_user_id="123456"
+    )
+    
+    assert isinstance(manager.adk_session_service, SqliteSessionService)
+    assert isinstance(manager.session_manager.storage, JSONFileSessionStorage)
+    assert manager.config.session.user_mapping["telegram:123456"] == "user"

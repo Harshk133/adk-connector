@@ -20,9 +20,55 @@ class ConnectorManager:
         agent: Any,
         config: Optional[ConnectorConfig] = None,
         session_storage: Optional[Any] = None,
+        adk_session_service: Optional[Any] = None,
+        app_name: Optional[str] = None,
+        session_management_across_device: bool = False,
+        dev_user_id: Optional[str] = None,
     ):
         self.agent = agent
         self.config = config or ConnectorConfig()
+        self.app_name = app_name
+        
+        # Automatic environment setup for cross-device session management
+        if session_management_across_device:
+            import sys
+            import os
+            
+            # Resolve script directory
+            script_dir = "."
+            main_module = sys.modules.get('__main__')
+            if main_module and hasattr(main_module, '__file__') and main_module.__file__:
+                main_file = main_module.__file__
+                if not main_file.endswith("pytest") and "pytest" not in os.path.basename(main_file):
+                    script_dir = os.path.dirname(os.path.abspath(main_file))
+            
+            # Ensure .adk directory exists
+            adk_dir = os.path.join(script_dir, ".adk")
+            os.makedirs(adk_dir, exist_ok=True)
+            
+            # Auto-initialize SQLite session service if none provided
+            if adk_session_service is None:
+                from google.adk.sessions.sqlite_session_service import SqliteSessionService
+                db_path = os.path.join(adk_dir, "session.db").replace("\\", "/")
+                adk_session_service = SqliteSessionService(db_path=db_path)
+            
+            # Auto-initialize JSON file session storage if none provided
+            if session_storage is None:
+                from adk_connectors.storage.json_file import JSONFileSessionStorage
+                storage_path = os.path.join(adk_dir, "connector_sessions.json")
+                session_storage = JSONFileSessionStorage(storage_path)
+                
+            # Auto-populate user mappings for common platforms
+            if dev_user_id:
+                dev_user_id = str(dev_user_id)
+                self.config.session.user_mapping.update({
+                    f"telegram:{dev_user_id}": "user",
+                    f"discord:{dev_user_id}": "user",
+                    f"slack:{dev_user_id}": "user",
+                    dev_user_id: "user"
+                })
+        
+        self.adk_session_service = adk_session_service
         
         storage = session_storage or MemorySessionStorage()
         self.session_manager = SessionManager(storage, self.config.session)
@@ -43,17 +89,38 @@ class ConnectorManager:
     def _get_runner(self) -> Any:
         if self._runner is None:
             from google.adk.runners import Runner
-            from google.adk.sessions.in_memory_session_service import InMemorySessionService
             
-            app_name = getattr(self.agent, "name", "adk_app") or "adk_app"
+            if self.app_name:
+                app_name = self.app_name
+            else:
+                app_name = None
+                import sys
+                import os
+                main_module = sys.modules.get('__main__')
+                if main_module and hasattr(main_module, '__file__') and main_module.__file__:
+                    main_file = main_module.__file__
+                    if not main_file.endswith("pytest") and "pytest" not in os.path.basename(main_file):
+                        dir_path = os.path.dirname(os.path.abspath(main_file))
+                        folder_name = os.path.basename(dir_path)
+                        if folder_name and folder_name != "tests":
+                            app_name = folder_name
+                if not app_name:
+                    app_name = getattr(self.agent, "name", "adk_app") or "adk_app"
+            
+            if self.adk_session_service is not None:
+                session_service = self.adk_session_service
+            else:
+                from google.adk.sessions.in_memory_session_service import InMemorySessionService
+                session_service = InMemorySessionService()
             
             self._runner = Runner(
                 agent=self.agent,
                 app_name=app_name,
-                session_service=InMemorySessionService(),
+                session_service=session_service,
                 auto_create_session=True
             )
         return self._runner
+
 
 
 

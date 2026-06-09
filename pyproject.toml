@@ -3,12 +3,12 @@ requires = ["setuptools>=61.REMOVED_VALUE.REMOVED_VALUE", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "adk-connectors-core"
+name = "adk-connector"
 version = "REMOVED_VALUE.1.REMOVED_VALUE"
-description = "Core framework for ADK Connectors"
+description = "Unified cross-platform connectors suite for Google ADK Agents"
 readme = "README.md"
 authors = [
-    { name = "Developer", email = "developer@example.com" }
+    { name = "Harsh Kale", email = "harshmkale.2REMOVED_VALUEREMOVED_VALUE4@gmail.com" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -21,6 +21,17 @@ dependencies = [
     "httpx>=REMOVED_VALUE.24.REMOVED_VALUE",
     "google-adk>=2.2.REMOVED_VALUE",
     "python-dotenv>=1.REMOVED_VALUE.REMOVED_VALUE",
+    "aiosqlite>=REMOVED_VALUE.19.REMOVED_VALUE",
+]
+
+[project.optional-dependencies]
+telegram = []
+discord = []
+whatsapp = []
+all = [
+    "adk-connector[telegram]",
+    "adk-connector[discord]",
+    "adk-connector[whatsapp]",
 ]
 
 [tool.setuptools.packages.find]

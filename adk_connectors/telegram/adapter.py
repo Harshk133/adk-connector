@@ -5,9 +5,9 @@ from typing import Optional, Dict, Any
 from adk_connectors.base_adapter import BaseAdapter
 from adk_connectors.models.incoming import IncomingMessage
 from adk_connectors.models.outgoing import OutgoingMessage
-from adk_connectors_telegram.config import TelegramConfig
-from adk_connectors_telegram.parser import TelegramParser
-from adk_connectors_telegram.formatter import TelegramFormatter
+from adk_connectors.telegram.config import TelegramConfig
+from adk_connectors.telegram.parser import TelegramParser
+from adk_connectors.telegram.formatter import TelegramFormatter
 
 logger = logging.getLogger("adk_connectors.telegram")
 
