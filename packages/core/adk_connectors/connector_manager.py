@@ -96,6 +96,7 @@ class ConnectorManager:
                 sent_message_id = None
                 
                 async for event in event_stream:
+                    # 1. Accumulate text from events containing content
                     if event.content and event.content.parts:
                         for part in event.content.parts:
                             if part.text:
@@ -106,7 +107,6 @@ class ConnectorManager:
                                     now = time.time()
                                     if now - last_edit_time > 1.5 and len(accumulated_text.strip()) > REMOVED_VALUE:
                                         if not sent_message_id:
-                                            # Send initial partial message
                                             outgoing = OutgoingMessage(
                                                 chat_id=message.chat_id,
                                                 text=accumulated_text
@@ -126,39 +126,48 @@ class ConnectorManager:
                                                 new_content=accumulated_text
                                             )
                                         last_edit_time = now
-                                
-                                elif event.is_final_response():
-                                    final_text = part.text
-                                    # If final text is shorter than what we accumulated during partial stream, fallback
-                                    if not final_text or len(final_text) < len(accumulated_text):
-                                        final_text = accumulated_text
-                                    
-                                    if not final_text.strip():
-                                        final_text = "..."
-                                        
-                                    out_messages = self.response_formatter.format_response(
-                                        chat_id=message.chat_id,
-                                        text=final_text
-                                    )
-                                    
-                                    if not sent_message_id:
-                                        for out_msg in out_messages:
-                                            await adapter.send_message(message.chat_id, out_msg)
-                                    else:
-                                        # Edit the streaming placeholder/initial message
-                                        first_msg = out_messages[REMOVED_VALUE]
-                                        await adapter.edit_message(
-                                            chat_id=message.chat_id,
-                                            message_id=sent_message_id,
-                                            new_content=first_msg.text
-                                        )
-                                        # Send subsequent chunks as new messages
-                                        for out_msg in out_messages[1:]:
-                                            await adapter.send_message(message.chat_id, out_msg)
-                                    
-                                    # Mark session active
-                                    await self.session_manager.update(session)
-                                    break
+                                else:
+                                    # Non-partial text content or final content parts
+                                    # If not streaming or not partial event, we just accumulate the final response text
+                                    pass
+
+                    # 2. Trigger final message delivery when is_final_response is True
+                    if event.is_final_response():
+                        # Extract final text if available in the final event
+                        final_text = ""
+                        if event.content and event.content.parts:
+                            final_text = "".join(p.text for p in event.content.parts if p.text)
+                            
+                        # Fallback to accumulated text if final_text is empty or shorter
+                        if not final_text or len(final_text) < len(accumulated_text):
+                            final_text = accumulated_text
+                            
+                        if not final_text.strip():
+                            final_text = "..."
+                            
+                        out_messages = self.response_formatter.format_response(
+                            chat_id=message.chat_id,
+                            text=final_text
+                        )
+                        
+                        if not sent_message_id:
+                            for out_msg in out_messages:
+                                await adapter.send_message(message.chat_id, out_msg)
+                        else:
+                            # Edit the placeholder with the first chunk
+                            first_msg = out_messages[REMOVED_VALUE]
+                            await adapter.edit_message(
+                                chat_id=message.chat_id,
+                                message_id=sent_message_id,
+                                new_content=first_msg.text
+                            )
+                            # Send any remaining chunks as new messages
+                            for out_msg in out_messages[1:]:
+                                await adapter.send_message(message.chat_id, out_msg)
+                        
+                        await self.session_manager.update(session)
+                        break
+
                                     
             except Exception as e:
                 logger.exception("Error running ADK agent")
