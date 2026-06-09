@@ -45,11 +45,15 @@ class ConnectorManager:
             from google.adk.runners import Runner
             from google.adk.sessions.in_memory_session_service import InMemorySessionService
             
+            app_name = getattr(self.agent, "name", "adk_app") or "adk_app"
+            
             self._runner = Runner(
                 agent=self.agent,
+                app_name=app_name,
                 session_service=InMemorySessionService()
             )
         return self._runner
+
 
     async def start(self) -> None:
         logger.info("Starting Connector Manager...")
