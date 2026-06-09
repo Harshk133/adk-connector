@@ -50,9 +50,11 @@ class ConnectorManager:
             self._runner = Runner(
                 agent=self.agent,
                 app_name=app_name,
-                session_service=InMemorySessionService()
+                session_service=InMemorySessionService(),
+                auto_create_session=True
             )
         return self._runner
+
 
 
     async def start(self) -> None:
