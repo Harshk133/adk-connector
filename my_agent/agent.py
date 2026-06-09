@@ -24,8 +24,8 @@ if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.INFO)
     
-    telegram_user_id = os.getenv("TELEGRAM_USER_ID", "REMOVED_VALUE")
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "REMOVED_VALUE")
+    telegram_user_id = os.getenv("TELEGRAM_USER_ID", "")
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     
     if not token:
         print("Please set TELEGRAM_BOT_TOKEN in your environment or .env file.")
