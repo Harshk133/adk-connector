@@ -2,8 +2,8 @@ import asyncio
 import logging
 from typing import Any, Optional
 from adk_connectors import ConnectorManager, ConnectorConfig, FormatterConfig
-from adk_connectors_telegram.config import TelegramConfig
-from adk_connectors_telegram.adapter import TelegramAdapter
+from adk_connectors.telegram.config import TelegramConfig
+from adk_connectors.telegram.adapter import TelegramAdapter
 
 logger = logging.getLogger("adk_connectors.telegram")
 
@@ -15,6 +15,11 @@ class TelegramConnector:
         streaming: bool = True,
         poll_interval: float = 1.REMOVED_VALUE,
         session_storage: Optional[Any] = None,
+        adk_session_service: Optional[Any] = None,
+        connector_config: Optional[ConnectorConfig] = None,
+        app_name: Optional[str] = None,
+        session_management_across_device: bool = False,
+        dev_user_id: Optional[str] = None,
     ):
         self.config = TelegramConfig(
             token=token,
@@ -22,13 +27,18 @@ class TelegramConnector:
         )
         self.adapter = TelegramAdapter(self.config)
         
-        connector_config = ConnectorConfig(
-            formatter=FormatterConfig(streaming=streaming)
-        )
+        if connector_config is None:
+            connector_config = ConnectorConfig(
+                formatter=FormatterConfig(streaming=streaming)
+            )
         self.manager = ConnectorManager(
             agent=agent,
             config=connector_config,
-            session_storage=session_storage
+            session_storage=session_storage,
+            adk_session_service=adk_session_service,
+            app_name=app_name,
+            session_management_across_device=session_management_across_device,
+            dev_user_id=dev_user_id
         )
         self.manager.register_adapter(self.adapter)
 

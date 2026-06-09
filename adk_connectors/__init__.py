@@ -6,6 +6,7 @@ from adk_connectors.models.outgoing import OutgoingMessage, InlineButton
 from adk_connectors.models.session import SessionModel
 from adk_connectors.storage.base import SessionStorage
 from adk_connectors.storage.memory import MemorySessionStorage
+from adk_connectors.storage.json_file import JSONFileSessionStorage
 from adk_connectors.event_router import EventRouter
 from adk_connectors.response_formatter import ResponseFormatter
 from adk_connectors.session_manager import SessionManager
@@ -23,6 +24,7 @@ __all__ = [
     "SessionModel",
     "SessionStorage",
     "MemorySessionStorage",
+    "JSONFileSessionStorage",
     "EventRouter",
     "ResponseFormatter",
     "SessionManager",
