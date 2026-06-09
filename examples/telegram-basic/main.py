@@ -12,8 +12,8 @@ logger = logging.getLogger("telegram_basic")
 async def main():
     # Load settings from environment variables
     # telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    telegram_token = "REMOVED_VALUE"
-    gemini_api_key = "REMOVED_VALUE"
+    telegram_token = ""
+    gemini_api_key = ""
     
     if not telegram_token:
         logger.error("Error: TELEGRAM_BOT_TOKEN environment variable is not set!")
