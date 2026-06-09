@@ -19,6 +19,8 @@ requires-python = ">=3.1REMOVED_VALUE"
 dependencies = [
     "pydantic>=2.REMOVED_VALUE.REMOVED_VALUE",
     "httpx>=REMOVED_VALUE.24.REMOVED_VALUE",
+    "google-adk>=2.2.REMOVED_VALUE",
+    "python-dotenv>=1.REMOVED_VALUE.REMOVED_VALUE",
 ]
 
 [tool.setuptools.packages.find]

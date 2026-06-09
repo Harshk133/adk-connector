@@ -23,7 +23,7 @@ if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.INFO)
     
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    token = "REMOVED_VALUE"
     if not token:
         print("Please set TELEGRAM_BOT_TOKEN in your environment or .env file.")
     else:
@@ -31,4 +31,4 @@ if __name__ == "__main__":
             token=token,
             agent=root_agent
         )
-        connector.start()
+        connector.start()
