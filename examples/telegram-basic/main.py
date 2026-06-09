@@ -32,7 +32,7 @@ async def main():
     agent = Agent(
         name="adk_telegram_assistant",
         model="gemini-2.5-flash",
-        instruction="You are a helpful conversational assistant running on Telegram. Be concise and friendly.",
+        instruction="You are a helpful conversational assistant which helps to tell user whats the current time in a specified city.",
     )
 
     # Initialize the Telegram Adapter

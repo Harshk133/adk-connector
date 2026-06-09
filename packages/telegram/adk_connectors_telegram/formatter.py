@@ -6,10 +6,8 @@ from adk_connectors.models.outgoing import OutgoingMessage, InlineButton
 class TelegramFormatter:
     @staticmethod
     def markdown_to_html(text: str) -> str:
-        # Escape HTML entities first to avoid parsing conflicts
         escaped = html.escape(text)
         
-        # Preformatted blocks (```code```)
         escaped = re.sub(
             r'```(?:[a-zA-ZREMOVED_VALUE-9_-]+\n)?(.*?)```',
             r'<pre>\1</pre>',
@@ -17,14 +15,12 @@ class TelegramFormatter:
             flags=re.DOTALL
         )
         
-        # Inline code (`code`)
         escaped = re.sub(
             r'`(.*?)`',
             r'<code>\1</code>',
             escaped
         )
         
-        # Bold (**bold** or *bold*)
         escaped = re.sub(
             r'\*\*(.*?)\*\*',
             r'<b>\1</b>',
@@ -36,7 +32,6 @@ class TelegramFormatter:
             escaped
         )
         
-        # Italic (__italic__ or _italic_)
         escaped = re.sub(
             r'__(.*?)__',
             r'<i>\1</i>',

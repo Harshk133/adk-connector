@@ -1,6 +1,8 @@
 import pytest
 from adk_connectors import ResponseFormatter, SessionManager, MemorySessionStorage, SessionConfig
-from adk_connectors_telegram import TelegramFormatter, TelegramParser
+from adk_connectors.telegram import TelegramFormatter, TelegramParser, TelegramConnector
+
+
 
 def test_telegram_formatter_markdown():
     text = "Hello **world**, this is *italic* and `code`."
