@@ -94,6 +94,7 @@ class ConnectorManager:
                 accumulated_text = ""
                 last_edit_time = REMOVED_VALUE.REMOVED_VALUE
                 sent_message_id = None
+                final_sent = False
                 
                 async for event in event_stream:
                     # 1. Accumulate text from events containing content
@@ -132,7 +133,8 @@ class ConnectorManager:
                                     pass
 
                     # 2. Trigger final message delivery when is_final_response is True
-                    if event.is_final_response():
+                    if event.is_final_response() and not final_sent:
+                        final_sent = True
                         # Extract final text if available in the final event
                         final_text = ""
                         if event.content and event.content.parts:
@@ -166,7 +168,7 @@ class ConnectorManager:
                                 await adapter.send_message(message.chat_id, out_msg)
                         
                         await self.session_manager.update(session)
-                        break
+
 
                                     
             except Exception as e:
