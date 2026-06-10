@@ -1,10 +1,16 @@
-# 🚀 ADK Connectors
+<p align="center">
+  <img src="assets/adk-connector.png" alt="ADK Connectors" width="400" />
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org)
-[![PyPI version](https://badge.fury.io/py/adk-connector.svg)](https://pypi.org/project/adk-connector/)
-[![NPM version](https://badge.fury.io/js/adk-connector-js.svg)](https://www.npmjs.com/package/adk-connector-js)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D%2018.0.0-green.svg)](https://nodejs.org)
+<h1 align="center">ADK Connectors</h1>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
+  <a href="https://www.python.org"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python Version" /></a>
+  <a href="https://pypi.org/project/adk-connector/"><img src="https://badge.fury.io/py/adk-connector.svg" alt="PyPI version" /></a>
+  <a href="https://www.npmjs.com/package/adk-connector-js"><img src="https://badge.fury.io/js/adk-connector-js.svg" alt="NPM version" /></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D%2018.0.0-green.svg" alt="Node Version" /></a>
+</p>
 
 **ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, WhatsApp, and Slack. 
 
