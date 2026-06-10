@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org)
-[![PyPI version](https://badge.fury.io/py/adk-connector.svg)](https://badge.fury.io/py/adk-connector)
+[![PyPI version](https://badge.fury.io/py/adk-connector.svg)](https://pypi.org/project/adk-connector/)
 
 **ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, WhatsApp, and Slack. 
 
