@@ -32,14 +32,20 @@ from blogger_agent.sub_agents import (
     social_media_writer,
 )
 from blogger_agent.tools import analyze_codebase, save_blog_post_to_file
+# STEP 1: Install the package 👉 pip install adk-connector
+# STEP 2: (Google Search For) Retrieve your Telegram Bot Token 👉 https://core.telegram.org/bots#6-botfather. Also get ur user id from userinfobot!
+# STEP 3: Update ur .env file
+    # GOOGLE_GENAI_USE_VERTEXAI=0
+    # GOOGLE_API_KEY=ur-api-key
+    # OPENROUTER_API_KEY=ur-api-key  
+    # TELEGRAM_BOT_TOKEN=ur-telegram-bot-token
+    # TELEGRAM_USER_ID=ur-telegram-user-id 
 
+# STEP 4: Import the TelegramConnector and bind it to your agent
 from adk_connectors.telegram import TelegramConnector
 
 
-
-
 # --- AGENT DEFINITIONS ---
-
 model = LiteLlm(
     model="openrouter/google/gemini-2.5-flash-lite",
                 api_key=os.getenv("OPENROUTER_API_KEY")
@@ -72,6 +78,8 @@ interactive_blogger_agent = Agent(
     sub_agents=[
         blog_editor,
         social_media_writer,
+        robust_blog_planner,
+        robust_blog_writer,
     ],
     tools=[
         FunctionTool(save_blog_post_to_file),
@@ -86,10 +94,10 @@ root_agent = interactive_blogger_agent
 if __name__ == "__main__":
     from adk_connectors.telegram import TelegramConnector
     
-    # 2. Retrieve your Telegram Bot Token
+    # STEP 5:Retrieve your Telegram Bot Token
     token = config.token
     
-    # 3. Bind the connector
+    # STEP 6: Bind the connector
     connector = TelegramConnector(
         token=token,
         agent=root_agent,
@@ -97,5 +105,5 @@ if __name__ == "__main__":
         dev_user_id=config.telegram_user_id,  # Optional: Restrict access to specific Telegram user ID(s)
     )
     
-    # 4. Start polling!
+    # STEP 7: Start polling!
     connector.start()

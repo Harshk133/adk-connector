@@ -18,6 +18,16 @@ By adding just a few lines of code, you can bridge the gap between local develop
 
 ---
 
+## 🎥 Setup Demo: `adk-connector` with the `blog-writer` Agent
+
+Below is a walkthrough showing how to set up the `adk-connector` Python package in the official `blog-writer` example project:
+
+https://github.com/Harshk133/adk-connector/raw/main/assets/adk-connector-demo.mov
+
+*(If the video does not load or play automatically, you can view the file directly at [assets/adk-connector-demo.mov](assets/adk-connector-demo.mov).)*
+
+---
+
 ## ✨ Key Features
 
 * 🚀 **3-Line Wrapper**: Deploy any `google-adk` agent (Python or JavaScript/TypeScript) to messaging channels with virtually zero code changes.
