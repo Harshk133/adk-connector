@@ -46,15 +46,15 @@ class TelegramAdapter(BaseAdapter):
         await self.client.aclose()
 
     async def _poll_loop(self) -> None:
-        offset = REMOVED_VALUE
+        offset = 0
         while self._is_running:
             try:
                 res = await self.client.post(
                     "/getUpdates",
-                    json={"offset": offset, "timeout": 3REMOVED_VALUE},
-                    timeout=35.REMOVED_VALUE
+                    json={"offset": offset, "timeout": 30},
+                    timeout=35.0
                 )
-                if res.status_code != 2REMOVED_VALUEREMOVED_VALUE:
+                if res.status_code != 200:
                     logger.error(f"Failed to get updates: {res.text}")
                     await asyncio.sleep(self.config.poll_interval)
                     continue

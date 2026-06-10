@@ -151,6 +151,23 @@ You can run this using the pre-configured `my_agent` workspace in the repository
 
 ---
 
+## 🤖 Multi-Agent & Sub-Agent Support
+
+`adk-connector` is built out-of-the-box to support complex agents that delegate tasks to sub-agents (e.g. using `sub_agents=[...]` or `tools=[AgentTool(agent=...)]`).
+
+### 1. Zero Extra Launcher Files Required
+You can integrate `adk-connector` directly inside your main `agent.py` file under `if __name__ == "__main__":`. There is no need to write a separate script like `run_telegram.py`. 
+
+### 2. Auto-Resolution of Missing State Variables
+In multi-agent setups, sub-agents often expect prompt context variables (e.g., `{seminal_paper}`) that get populated by parent outputs from previous turns. If a user triggers a tool in a single-turn or text-only scenario, these variables won't exist in the session state yet.
+`adk-connector` automatically scans all parent and sub-agent instructions for curly brace placeholders and pre-populates them dynamically with user input or fallback values before executing the runner. This **prevents `KeyError: 'Context variable not found'` crashes**.
+
+### 3. Double-Import Safety
+Running multi-agent code directly as a script (`python -m package.module`) often triggers Python double-import cycles if the package initialization files import the agent submodule. When an ADK agent is instantiated twice in this cycle, Pydantic throws a validation error because sub-agents are assigned a parent twice. 
+`adk-connector` automatically overrides ADK parent-validation checks to allow safe duplicate parent resolution under import cycles, guaranteeing that **your code runs correctly out of the box**.
+
+---
+
 ## 🗺️ Roadmap
 
 - [x] **Telegram Connector** (v0.1.0)

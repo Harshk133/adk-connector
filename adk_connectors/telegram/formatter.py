@@ -9,7 +9,7 @@ class TelegramFormatter:
         escaped = html.escape(text)
         
         escaped = re.sub(
-            r'```(?:[a-zA-ZREMOVED_VALUE-9_-]+\n)?(.*?)```',
+            r'```(?:[a-zA-Z0-9_-]+\n)?(.*?)```',
             r'<pre>\1</pre>',
             escaped,
             flags=re.DOTALL

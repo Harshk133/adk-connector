@@ -1,27 +1,27 @@
 [build-system]
-requires = ["setuptools>=61.REMOVED_VALUE.REMOVED_VALUE", "wheel"]
+requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "adk-connector"
-version = "REMOVED_VALUE.1.REMOVED_VALUE"
+version = "0.2.1"
 description = "Unified cross-platform connectors suite for Google ADK Agents"
 readme = "README.md"
 authors = [
-    { name = "Harsh Kale", email = "harshmkale.2REMOVED_VALUEREMOVED_VALUE4@gmail.com" }
+    { name = "Harsh Kale", email = "harshmkale.2004@gmail.com" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-requires-python = ">=3.1REMOVED_VALUE"
+requires-python = ">=3.10"
 dependencies = [
-    "pydantic>=2.REMOVED_VALUE.REMOVED_VALUE",
-    "httpx>=REMOVED_VALUE.24.REMOVED_VALUE",
-    "google-adk>=2.2.REMOVED_VALUE",
-    "python-dotenv>=1.REMOVED_VALUE.REMOVED_VALUE",
-    "aiosqlite>=REMOVED_VALUE.19.REMOVED_VALUE",
+    "pydantic>=2.0.0",
+    "httpx>=0.24.0",
+    "google-adk>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "aiosqlite>=0.19.0",
 ]
 
 [project.optional-dependencies]

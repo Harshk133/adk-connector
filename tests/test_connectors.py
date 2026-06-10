@@ -40,11 +40,11 @@ def test_telegram_parser():
     assert parsed.text == "Hello world"
 
 def test_response_formatter_chunking():
-    formatter = ResponseFormatter(max_message_length=1REMOVED_VALUE)
+    formatter = ResponseFormatter(max_message_length=10)
     long_text = "abcdef ghijk lmnop"
     chunks = formatter.chunk_text(long_text)
     assert len(chunks) > 1
-    assert all(len(chunk) <= 1REMOVED_VALUE for chunk in chunks)
+    assert all(len(chunk) <= 10 for chunk in chunks)
 
 @pytest.mark.asyncio
 async def test_session_manager():
@@ -62,7 +62,7 @@ async def test_session_manager():
 @pytest.mark.asyncio
 async def test_session_manager_with_user_mapping():
     storage = MemorySessionStorage()
-    config = SessionConfig(ttl_seconds=1REMOVED_VALUE, user_mapping={"telegram:12345": "user"})
+    config = SessionConfig(ttl_seconds=10, user_mapping={"telegram:12345": "user"})
     manager = SessionManager(storage, config)
     
     session = await manager.get_or_create("12345", "telegram")
@@ -79,8 +79,8 @@ async def test_json_file_session_storage(tmp_path):
         platform_key="telegram:123",
         adk_session_id="session-456",
         adk_user_id="user-789",
-        created_at=1REMOVED_VALUEREMOVED_VALUE.REMOVED_VALUE,
-        last_active=1REMOVED_VALUE5.REMOVED_VALUE,
+        created_at=100.0,
+        last_active=105.0,
         platform_metadata={"foo": "bar"}
     )
     
@@ -102,7 +102,7 @@ async def test_session_management_across_device_auto_init(tmp_path):
     from adk_connectors.storage.json_file import JSONFileSessionStorage
     from google.adk.agents.llm_agent import Agent
     
-    agent = Agent(name="test_agent", model="gemini-2.REMOVED_VALUE-flash")
+    agent = Agent(name="test_agent", model="gemini-2.0-flash")
     
     class MockMain:
         __file__ = str(tmp_path / "run_agent.py")
@@ -118,3 +118,99 @@ async def test_session_management_across_device_auto_init(tmp_path):
     assert isinstance(manager.adk_session_service, SqliteSessionService)
     assert isinstance(manager.session_manager.storage, JSONFileSessionStorage)
     assert manager.config.session.user_mapping["telegram:123456"] == "user"
+
+
+@pytest.mark.asyncio
+async def test_sub_agent_event_handling():
+    from adk_connectors import ConnectorManager, BaseAdapter, IncomingMessage, OutgoingMessage
+    from google.adk.agents.llm_agent import Agent
+    from google.adk.events.event import Event
+    from google.genai import types
+    
+    agent = Agent(name="test_agent", model="gemini-2.0-flash")
+    
+    class MockAdapter(BaseAdapter):
+        platform = "telegram"
+        def __init__(self):
+            super().__init__()
+            self.sent_messages = []
+            self.edited_messages = []
+            
+        async def start(self) -> None:
+            pass
+            
+        async def stop(self) -> None:
+            pass
+            
+        async def send_message(self, chat_id: str, message: OutgoingMessage):
+            self.sent_messages.append(message)
+            class MockResponse:
+                message_id = len(self.sent_messages)
+            return MockResponse()
+            
+        async def edit_message(self, chat_id: str, message_id: str, new_content: str):
+            self.edited_messages.append((message_id, new_content))
+            return {}
+            
+        async def set_typing_indicator(self, chat_id: str) -> None:
+            pass
+            
+    adapter = MockAdapter()
+    manager = ConnectorManager(agent=agent)
+    manager.register_adapter(adapter)
+    
+    # Mock runner's run_async
+    class MockRunner:
+        async def run_async(self, user_id, session_id, new_message):
+            # 1. Yield sub-agent partial event
+            event1 = Event(
+                branch="sub_agent_branch",
+                partial=True,
+                content=types.Content(parts=[types.Part.from_text(text="sub-agent partial")])
+            )
+            yield event1
+            
+            # 2. Yield sub-agent final event
+            event2 = Event(
+                branch="sub_agent_branch",
+                partial=False,
+                content=types.Content(parts=[types.Part.from_text(text="sub-agent final response")])
+            )
+            yield event2
+            
+            # 3. Yield parent agent partial event
+            event3 = Event(
+                branch=None,
+                partial=True,
+                content=types.Content(parts=[types.Part.from_text(text="parent partial")])
+            )
+            yield event3
+            
+            # 4. Yield parent agent final event
+            event4 = Event(
+                branch=None,
+                partial=False,
+                content=types.Content(parts=[types.Part.from_text(text="parent final response")])
+            )
+            yield event4
+            
+    manager._runner = MockRunner()
+    
+    incoming = IncomingMessage(
+        message_id="msg123",
+        platform="telegram",
+        chat_id="chat123",
+        user_id="user456",
+        text="hello"
+    )
+    
+    await manager.handle_incoming_message(incoming)
+    
+    # Since streaming is enabled by default, the parent's partial is streamed,
+    # then edited with the parent's final response.
+    # The sub-agent's events should be completely ignored in message delivery.
+    assert len(adapter.sent_messages) == 1
+    assert adapter.sent_messages[0].text == "parent partial"
+    
+    assert len(adapter.edited_messages) == 1
+    assert adapter.edited_messages[0] == ("1", "parent final response")

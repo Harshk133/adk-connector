@@ -2,7 +2,7 @@ from typing import List
 from adk_connectors.models.outgoing import OutgoingMessage
 
 class ResponseFormatter:
-    def __init__(self, max_message_length: int = 4REMOVED_VALUE96):
+    def __init__(self, max_message_length: int = 4096):
         self.max_message_length = max_message_length
 
     def chunk_text(self, text: str) -> List[str]:
@@ -16,10 +16,10 @@ class ResponseFormatter:
                 break
             
             # Split at the last newline within the limit, if possible
-            split_idx = text.rfind('\n', REMOVED_VALUE, self.max_message_length)
+            split_idx = text.rfind('\n', 0, self.max_message_length)
             if split_idx == -1:
                 # If no newline, split at space
-                split_idx = text.rfind(' ', REMOVED_VALUE, self.max_message_length)
+                split_idx = text.rfind(' ', 0, self.max_message_length)
             
             if split_idx == -1:
                 # Force split at maximum length

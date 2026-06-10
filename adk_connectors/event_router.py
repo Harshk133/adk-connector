@@ -31,4 +31,4 @@ class EventRouter:
             else:
                 await run_handlers()
 
-        await run_chain(REMOVED_VALUE)
+        await run_chain(0)

@@ -13,7 +13,7 @@ class TelegramConnector:
         token: str,
         agent: Any,
         streaming: bool = True,
-        poll_interval: float = 1.REMOVED_VALUE,
+        poll_interval: float = 1.0,
         session_storage: Optional[Any] = None,
         adk_session_service: Optional[Any] = None,
         connector_config: Optional[ConnectorConfig] = None,

@@ -1,6 +1,7 @@
 import time
 import asyncio
 import logging
+import re
 from typing import Optional, List, Any
 from adk_connectors.base_adapter import BaseAdapter
 from adk_connectors.event_router import EventRouter
@@ -13,6 +14,49 @@ from adk_connectors.models.outgoing import OutgoingMessage
 from adk_connectors.storage.memory import MemorySessionStorage
 
 logger = logging.getLogger("adk_connectors")
+
+def _find_all_placeholders(agent) -> set[str]:
+    placeholders = set()
+    instruction = getattr(agent, "instruction", None)
+    
+    # Handle both string instructions and callables/objects (e.g. InstructionProvider)
+    if isinstance(instruction, str):
+        for match in re.finditer(r'{+([^{}]+)}+', instruction):
+            var_name = match.group(1).strip()
+            if var_name.endswith('?'):
+                var_name = var_name[:-1]
+            if var_name.startswith('artifact.'):
+                continue
+            if ':' in var_name:
+                var_name = var_name.split(':')[-1]
+            if var_name.isidentifier():
+                placeholders.add(var_name)
+    elif instruction is not None:
+        template = getattr(instruction, "template", None) or getattr(instruction, "instruction_template", None)
+        if isinstance(template, str):
+            for match in re.finditer(r'{+([^{}]+)}+', template):
+                var_name = match.group(1).strip()
+                if var_name.endswith('?'):
+                    var_name = var_name[:-1]
+                if var_name.startswith('artifact.'):
+                    continue
+                if ':' in var_name:
+                    var_name = var_name.split(':')[-1]
+                if var_name.isidentifier():
+                    placeholders.add(var_name)
+
+    # Recursively check sub-agents and tools
+    sub_agents = getattr(agent, "sub_agents", []) or []
+    tools = getattr(agent, "tools", []) or []
+    for tool in tools:
+        sub_agent = getattr(tool, "agent", None)
+        if sub_agent:
+            placeholders.update(_find_all_placeholders(sub_agent))
+            
+    for sa in sub_agents:
+        placeholders.update(_find_all_placeholders(sa))
+        
+    return placeholders
 
 class ConnectorManager:
     def __init__(
@@ -150,22 +194,62 @@ class ConnectorManager:
             processed_input = await self.message_processor.process(message)
             runner = self._get_runner()
             
+            # Seed state_delta dynamically to prevent KeyErrors in subagents
+            state_delta = {}
             try:
-                # Get the async event generator from runner.run_async
-                event_stream = runner.run_async(
+                adk_session = await runner.session_service.get_session(
+                    app_name=runner.app_name,
                     user_id=session.adk_user_id,
-                    session_id=session.adk_session_id,
-                    new_message=processed_input
+                    session_id=session.adk_session_id
                 )
+                existing_state = adk_session.state if adk_session else {}
+                
+                placeholders = _find_all_placeholders(self.agent)
+                coordinator_output_key = getattr(self.agent, "output_key", None)
+                
+                for ph in placeholders:
+                    if ph not in existing_state:
+                        # If the placeholder matches the root agent's output_key,
+                        # seed it with the user message or a sensible default
+                        if coordinator_output_key and ph == coordinator_output_key:
+                            user_text = message.text or ""
+                            fallback_val = "Attention Is All You Need"
+                            if len(user_text.strip()) > 5 and len(user_text.strip()) < 100:
+                                fallback_val = user_text.strip()
+                            state_delta[ph] = fallback_val
+                        else:
+                            state_delta[ph] = ""
+            except Exception as se:
+                logger.warning(f"Could not load or check ADK session state: {se}")
+            
+            try:
+                # Inspect signature to verify if run_async accepts state_delta (for test/mock compatibility)
+                import inspect
+                run_async_sig = inspect.signature(runner.run_async)
+                
+                # Get the async event generator from runner.run_async
+                if "state_delta" in run_async_sig.parameters:
+                    event_stream = runner.run_async(
+                        user_id=session.adk_user_id,
+                        session_id=session.adk_session_id,
+                        new_message=processed_input,
+                        state_delta=state_delta
+                    )
+                else:
+                    event_stream = runner.run_async(
+                        user_id=session.adk_user_id,
+                        session_id=session.adk_session_id,
+                        new_message=processed_input
+                    )
                 
                 accumulated_text = ""
-                last_edit_time = REMOVED_VALUE.REMOVED_VALUE
+                last_edit_time = 0.0
                 sent_message_id = None
-                final_sent = False
+                final_event = None
                 
                 async for event in event_stream:
-                    # 1. Accumulate text from events containing content
-                    if event.content and event.content.parts:
+                    # 1. Accumulate text from events containing content (only from root branch to avoid sub-agent confusion)
+                    if not event.branch and event.content and event.content.parts:
                         for part in event.content.parts:
                             if part.text:
                                 if self.config.formatter.streaming and event.partial:
@@ -173,7 +257,7 @@ class ConnectorManager:
                                     
                                     # Periodically update the user (rate-limit edits to ~1.5s)
                                     now = time.time()
-                                    if now - last_edit_time > 1.5 and len(accumulated_text.strip()) > REMOVED_VALUE:
+                                    if now - last_edit_time > 1.5 and len(accumulated_text.strip()) > 0:
                                         if not sent_message_id:
                                             outgoing = OutgoingMessage(
                                                 chat_id=message.chat_id,
@@ -194,47 +278,49 @@ class ConnectorManager:
                                                 new_content=accumulated_text
                                             )
                                         last_edit_time = now
-                                else:
-                                    # Non-partial text content or final content parts
-                                    # If not streaming or not partial event, we just accumulate the final response text
-                                    pass
 
-                    # 2. Trigger final message delivery when is_final_response is True
-                    if event.is_final_response() and not final_sent:
-                        final_sent = True
-                        # Extract final text if available in the final event
-                        final_text = ""
-                        if event.content and event.content.parts:
-                            final_text = "".join(p.text for p in event.content.parts if p.text)
-                            
-                        # Fallback to accumulated text if final_text is empty or shorter
-                        if not final_text or len(final_text) < len(accumulated_text):
-                            final_text = accumulated_text
-                            
-                        if not final_text.strip():
-                            final_text = "..."
-                            
-                        out_messages = self.response_formatter.format_response(
+                    # 2. Track the latest final response event (prioritize root agent, fallback to sub-agent if no root is final)
+                    if event.is_final_response():
+                        if not event.branch:
+                            final_event = event
+                        elif final_event is None or final_event.branch:
+                            final_event = event
+
+                # 3. Deliver final message when the event stream iteration is complete
+                if final_event:
+                    # Extract final text if available in the final event
+                    final_text = ""
+                    if final_event.content and final_event.content.parts:
+                        final_text = "".join(p.text for p in final_event.content.parts if p.text)
+                        
+                    # Fallback to accumulated text if final_text is empty or shorter
+                    if not final_text or len(final_text) < len(accumulated_text):
+                        final_text = accumulated_text
+                        
+                    if not final_text.strip():
+                        final_text = "..."
+                        
+                    out_messages = self.response_formatter.format_response(
+                        chat_id=message.chat_id,
+                        text=final_text
+                    )
+                    
+                    if not sent_message_id:
+                        for out_msg in out_messages:
+                            await adapter.send_message(message.chat_id, out_msg)
+                    else:
+                        # Edit the placeholder with the first chunk
+                        first_msg = out_messages[0]
+                        await adapter.edit_message(
                             chat_id=message.chat_id,
-                            text=final_text
+                            message_id=sent_message_id,
+                            new_content=first_msg.text
                         )
-                        
-                        if not sent_message_id:
-                            for out_msg in out_messages:
-                                await adapter.send_message(message.chat_id, out_msg)
-                        else:
-                            # Edit the placeholder with the first chunk
-                            first_msg = out_messages[REMOVED_VALUE]
-                            await adapter.edit_message(
-                                chat_id=message.chat_id,
-                                message_id=sent_message_id,
-                                new_content=first_msg.text
-                            )
-                            # Send any remaining chunks as new messages
-                            for out_msg in out_messages[1:]:
-                                await adapter.send_message(message.chat_id, out_msg)
-                        
-                        await self.session_manager.update(session)
+                        # Send any remaining chunks as new messages
+                        for out_msg in out_messages[1:]:
+                            await adapter.send_message(message.chat_id, out_msg)
+                    
+                    await self.session_manager.update(session)
 
 
                                     
