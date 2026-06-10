@@ -3,7 +3,7 @@ import asyncio
 import logging
 from google.adk.agents import Agent
 from adk_connectors import ConnectorManager, ConnectorConfig, FormatterConfig
-from adk_connectors_telegram import TelegramAdapter, TelegramConfig
+from adk_connectors.telegram import TelegramAdapter, TelegramConfig
 
 # Configure structured logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -62,7 +62,7 @@ async def main():
         await connector.start()
         # Keep running
         while True:
-            await asyncio.sleep(36REMOVED_VALUEREMOVED_VALUE)
+            await asyncio.sleep(3600)
     except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Shutting down gracefully...")
     finally:
