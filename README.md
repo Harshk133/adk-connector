@@ -1,7 +1,4 @@
 
-
-https://github.com/user-attachments/assets/e19ded5d-fcca-4f17-b0e4-390d95c7c4dd
-
 <p align="center">
   <img src="assets/adk-connector.png" alt="ADK Connectors" width="400" />
 </p>
@@ -19,6 +16,16 @@ https://github.com/user-attachments/assets/e19ded5d-fcca-4f17-b0e4-390d95c7c4dd
 **ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, WhatsApp, and Slack. 
 
 By adding just a few lines of code, you can bridge the gap between local development, testing, and production messaging platforms.
+
+---
+
+## 🎥 Setup Demo: `adk-connector` with the `blog-writer` Agent
+
+Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.org/project/adk-connector/) Python package in the official [`blog-writer`](https://github.com/google/adk-samples/tree/main/python/agents/blog-writer) example project:
+
+[https://github.com/Harshk133/adk-connector/raw/main/assets/adk-connector-demo.mov](https://github.com/user-attachments/assets/e19ded5d-fcca-4f17-b0e4-390d95c7c4dd)
+
+*(If the video does not load or play automatically, you can view the file directly at [assets/adk-connector-demo.mov](assets/adk-connector-demo.mov).)*
 
 ---
 
