@@ -3,59 +3,50 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org)
 [![PyPI version](https://badge.fury.io/py/adk-connector.svg)](https://pypi.org/project/adk-connector/)
+[![NPM version](https://badge.fury.io/js/adk-connector-js.svg)](https://www.npmjs.com/package/adk-connector-js)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D%2018.0.0-green.svg)](https://nodejs.org)
 
 **ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, WhatsApp, and Slack. 
 
-By adding just **three lines of code**, you can bridge the gap between local development, testing, and production messaging platforms.
+By adding just a few lines of code, you can bridge the gap between local development, testing, and production messaging platforms.
 
 ---
 
 ## ✨ Key Features
 
-* 🚀 **3-Line Wrapper**: Deploy any `google-adk` agent to messaging channels with virtually zero code changes.
-* 🔄 **Cross-Device Session Sync**: Enable `session_management_across_device` to sync conversations seamlessly. Chat on Telegram, then inspect and continue the exact same conversation inside the ADK Web UI (`adk web`).
-* 💾 **Automatic Database Engine Setup**: Transparently spins up an asynchronous SQLite (`aiosqlite`) backend to record session states, events, and tool invocations.
+* 🚀 **3-Line Wrapper**: Deploy any `google-adk` agent (Python or JavaScript/TypeScript) to messaging channels with virtually zero code changes.
+* 🔄 **Cross-Device Session Sync**: Sync conversations seamlessly. Chat on Telegram, then inspect and continue the exact same conversation inside the ADK Web UI (`adk web`).
+* 💾 **Automatic Database Engine Setup**: Transparently spins up an asynchronous SQLite backend to record session states, events, and tool invocations.
 * 🔒 **Local Persistent Mapping**: Uses a secure, local JSON mapping engine so restarting the bot never breaks session IDs or active chats.
-* 🧩 **Extensible Architecture**: Structured from day one to support multiple providers (Telegram, and future modules for WhatsApp, Discord, and Slack).
+* 🧩 **Extensible Architecture**: Structured to support multiple providers (Telegram, and future modules for WhatsApp, Discord, and Slack).
 
 ---
 
 ## 📦 Installation
 
-Depending on your use case, install `adk-connector` using one of the following setups:
+This repository contains connectors for both **Python** and **JavaScript / TypeScript**.
 
-### 1. Standard Setup
-For basic bot deployment without database session persistence or web UI synchronization:
+### 🐍 Python (`adk-connector`)
 ```bash
 pip install adk-connector
 ```
-
-### 2. Advanced Setup (Session Synchronization)
-For database-backed cross-device session synchronization (e.g. syncing with the `adk web` UI), you will also need the Google ADK database components:
+For database-backed cross-device session synchronization (e.g. `adk web` UI), install the DB components:
 ```bash
-pip install adk-connector
 pip install "google-adk[db]"
 ```
 
-### 3. Local Developer Setup (From Source)
-If you are developing or testing `adk-connector` locally, clone this repository and install it in editable mode:
+### 🟨 JavaScript / TypeScript (`adk-connector-js`)
 ```bash
-git clone https://github.com/Harshk133/adk-connector.git
-cd adk-connector
-
-# Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install package in editable mode with dependencies
-pip install -e .
+npm install adk-connector-js
+# or
+pnpm install adk-connector-js
 ```
 
 ---
 
 ## ⚙️ Environment Configuration
 
-Create a `.env` file in your project root (or copy `.env.example`) and configure the required environment variables:
+Create a `.env` file in your project root and configure the required environment variables:
 
 ```env
 # Required for agent reasoning
@@ -64,19 +55,17 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Required for Telegram bot
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 
-# Required ONLY for Advanced Setup (to map your Telegram ID to the local Web UI user)
+# Required ONLY for Advanced Python Setup (to map your Telegram ID to the local Web UI user)
 TELEGRAM_USER_ID=your_telegram_user_id_here
 ```
 
 ---
 
-## ⚡ Standard Setup: Quick Start
+## ⚡ Quick Start: Python vs JS/TS
 
-The standard setup launches a standalone chatbot that handles messages but does not sync with the `adk web` UI.
+### 🐍 Python Quick Start
 
-### 1. Create your Run Script
-Write the following code to `agent_standard.py`:
-
+#### 1. Write the code (`agent.py`)
 ```python
 import os
 from dotenv import load_dotenv
@@ -107,19 +96,48 @@ if __name__ == "__main__":
     connector.start()
 ```
 
-### 2. Run the Script
-Execute the script from your terminal:
+#### 2. Run the Script
 ```bash
-python agent_standard.py
+python agent.py
 ```
-*Alternatively, you can test this mode using the pre-configured basic example in the repository:*
+
+### 🟨 JavaScript / TypeScript Quick Start
+
+#### 1. Write the code (`agent.ts`)
+```typescript
+import { LlmAgent } from '@google/adk';
+import { TelegramConnector } from 'adk-connector-js';
+import dotenv from 'dotenv';
+
+// Load environment variables (.env)
+dotenv.config();
+
+// 1. Define your standard Google ADK Agent
+export const rootAgent = new LlmAgent({
+  name: 'my_assistant',
+  model: 'gemini-2.5-flash',
+  instruction: 'You are a helpful assistant.'
+});
+
+// 2. Launch the Telegram Connector under script entrypoint
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('agent.ts')) {
+  const connector = new TelegramConnector({
+    token: process.env.TELEGRAM_BOT_TOKEN!,
+    agent: rootAgent
+  });
+
+  connector.start();
+}
+```
+
+#### 2. Run the Script
 ```bash
-python examples/telegram-basic/main.py
+npx tsx agent.ts
 ```
 
 ---
 
-## 🔄 Advanced Setup: Session Synchronization (with `adk web`)
+## 🔄 Python Advanced Setup: Session Synchronization (with `adk web`)
 
 The advanced setup enables the unified cross-device sync engine so you can chat with your bot on Telegram, and view, inspect, or continue the exact same conversation inside the local **ADK Web UI** (`adk web`).
 

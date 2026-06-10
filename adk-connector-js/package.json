@@ -1,0 +1,33 @@
+{
+  "name": "adk-connector-js",
+  "version": "0.1.0",
+  "description": "Unified cross-platform connectors suite for Google ADK TypeScript Agents",
+  "main": "dist/index.js",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "google-adk",
+    "telegram",
+    "bot",
+    "agent",
+    "typescript"
+  ],
+  "author": "Harsh Kale",
+  "license": "MIT",
+  "dependencies": {
+    "@google/adk": "^1.2.0",
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.12"
+  }
+}
