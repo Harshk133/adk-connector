@@ -46,14 +46,9 @@ from adk_connectors.discord import DiscordConnector
 
 
 # --- AGENT DEFINITIONS ---
-model = LiteLlm(
-    model="openrouter/google/gemini-2.5-flash-lite",
-                api_key=os.getenv("OPENROUTER_API_KEY")
-                )
-
 interactive_blogger_agent = Agent(
     name="interactive_blogger_agent",
-    model=model,
+    model="gemini-2.5-flash",
     description="The primary technical blogging assistant. It collaborates with the user to create a blog post.",
     instruction=f"""
     You are a technical blogging assistant. Your primary function is to help users create technical blog posts.
