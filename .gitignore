@@ -18,4 +18,5 @@ build/
 .vscode/
 secrets.txt
 node_modules/
-auth/
+auth/
+.adk/

@@ -14,6 +14,17 @@ const logger = pino({ level: 'silent' });
 // Global Python client and WhatsApp socket references
 let pyClient = null;
 let sock = null;
+const sentMessageIds = new Set();
+
+function normalizeJid(jid) {
+    if (!jid) return jid;
+    if (jid.includes('@')) {
+        const [user, domain] = jid.split('@');
+        return `${user.split(':')[0]}@${domain}`;
+    }
+    return jid.split(':')[0];
+}
+
 
 // Start WebSocket Server once
 const wss = new WebSocket.Server({ port: PORT, host: '127.0.0.1' });
@@ -43,7 +54,10 @@ wss.on('connection', (ws, req) => {
                 const { to, text } = data;
                 if (sock) {
                     console.log(`Sending message to ${to}: ${text}`);
-                    await sock.sendMessage(to, { text });
+                    const sentMsg = await sock.sendMessage(to, { text });
+                    if (sentMsg && sentMsg.key && sentMsg.key.id) {
+                        sentMessageIds.add(sentMsg.key.id);
+                    }
                 } else {
                     console.error("Cannot send message: WhatsApp socket not initialized.");
                 }
@@ -81,10 +95,26 @@ async function connectToWhatsApp() {
         }
 
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut && statusCode !== 401 && statusCode !== 403;
             console.log('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
             if (shouldReconnect) {
                 connectToWhatsApp();
+            } else {
+                console.log('Credentials expired or logged out. Scheduling auth directory cleanup to force a new QR code...');
+                // Wait for Baileys to release file handles before deleting
+                setTimeout(() => {
+                    try {
+                        if (fs.existsSync(AUTH_DIR)) {
+                            fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+                            console.log('Auth directory cleaned up successfully.');
+                        }
+                    } catch (e) {
+                        console.error("Failed to delete auth directory (files may still be locked by the OS):", e.message);
+                        console.log("Please manually delete the folder:", AUTH_DIR);
+                    }
+                    connectToWhatsApp();
+                }, 1500);
             }
         } else if (connection === 'open') {
             console.log('Connected to WhatsApp Web via Baileys!');
@@ -97,16 +127,42 @@ async function connectToWhatsApp() {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async (m) => {
+        console.log(`[Diagnostic] messages.upsert received, type: ${m.type}, count: ${m.messages?.length}`);
         if (m.type === 'notify') {
             for (const msg of m.messages) {
-                if (!msg.key.fromMe && msg.message) {
-                    const sender = msg.key.remoteJid;
+                console.log(`[Diagnostic] message details: key=${JSON.stringify(msg.key)}, hasMessage=${!!msg.message}`);
+                if (!msg.message) continue;
+
+                const messageId = msg.key.id;
+
+                // Ignore messages sent by the bot itself
+                if (sentMessageIds.has(messageId)) {
+                    console.log(`[Diagnostic] Ignoring message sent by bot itself: ${messageId}`);
+                    sentMessageIds.delete(messageId);
+                    continue;
+                }
+
+                const sender = msg.key.remoteJid;
+                const isFromMe = msg.key.fromMe;
+
+                const myJid = sock.user ? normalizeJid(sock.user.id) : null;
+                const myLid = sock.user && sock.user.lid ? normalizeJid(sock.user.lid) : null;
+                const normSender = normalizeJid(sender);
+                const normSenderAlt = msg.key.remoteJidAlt ? normalizeJid(msg.key.remoteJidAlt) : null;
+
+                const isSelf = (myJid && (normSender === myJid || normSenderAlt === myJid)) || 
+                               (myLid && normSender === myLid);
+
+                console.log(`[Diagnostic] Filter check: myJid=${myJid}, myLid=${myLid}, sender=${sender}, normSender=${normSender}, normSenderAlt=${normSenderAlt}, isFromMe=${isFromMe}, isSelf=${isSelf}`);
+
+                // Process the message if it is not from me,
+                // OR if it is from me in the "Message Yourself" self-chat
+                if (!isFromMe || isSelf) {
                     const text = msg.message.conversation || 
                                  msg.message.extendedTextMessage?.text || 
                                  msg.message.imageMessage?.caption || "";
                     
-                    const messageId = msg.key.id;
-                    const senderName = msg.pushName || sender.split('@')[0];
+                    const senderName = msg.pushName || (isSelf ? "You" : sender.split('@')[0]);
 
                     console.log(`Received message from ${senderName} (${sender}): ${text}`);
 
