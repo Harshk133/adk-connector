@@ -206,9 +206,9 @@ Running multi-agent code directly as a script (`python -m package.module`) often
 ## 🗺️ Roadmap
 
 - [x] **Telegram Connector** (v0.1.0)
-- [ ] **WhatsApp Connector** (Planned for v0.2.0)
-- [ ] **Discord Connector** (Planned for v0.3.0)
-- [ ] **Slack Connector** (Planned for v0.4.0)
+- [x] **Discord Connector** (v0.2.2)
+- [ ] **WhatsApp Connector** (Planned)
+- [ ] **Slack Connector** (Planned)
 
 ---
 

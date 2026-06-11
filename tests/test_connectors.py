@@ -214,3 +214,57 @@ async def test_sub_agent_event_handling():
     
     assert len(adapter.edited_messages) == 1
     assert adapter.edited_messages[0] == ("1", "parent final response")
+
+
+def test_discord_formatter():
+    from adk_connectors.discord import DiscordFormatter
+    from adk_connectors.models.outgoing import OutgoingMessage, InlineButton
+    
+    # Text only
+    msg = OutgoingMessage(chat_id="123", text="Hello world")
+    payload = DiscordFormatter.to_api_payload(msg)
+    assert payload["content"] == "Hello world"
+    assert "view" not in payload
+    
+    # Text with inline keyboard
+    msg_keyboard = OutgoingMessage(
+        chat_id="123",
+        text="Choose:",
+        inline_keyboard=[[InlineButton(text="Click me", callback_data="btn_click")]]
+    )
+    payload_keyboard = DiscordFormatter.to_api_payload(msg_keyboard)
+    assert payload_keyboard["content"] == "Choose:"
+    assert "view" in payload_keyboard
+    view = payload_keyboard["view"]
+    assert len(view.children) == 1
+    assert view.children[0].label == "Click me"
+    assert view.children[0].custom_id == "btn_click"
+
+
+def test_discord_parser():
+    from adk_connectors.discord import DiscordParser
+    from unittest.mock import MagicMock
+    
+    # Mock discord.Message
+    mock_author = MagicMock()
+    mock_author.id = 456
+    mock_author.bot = False
+    
+    mock_channel = MagicMock()
+    mock_channel.id = 789
+    
+    mock_message = MagicMock()
+    mock_message.id = 123
+    mock_message.author = mock_author
+    mock_message.channel = mock_channel
+    mock_message.content = "Test message"
+    mock_message.attachments = []
+    
+    parsed = DiscordParser.parse_message(mock_message)
+    assert parsed is not None
+    assert parsed.platform == "discord"
+    assert parsed.user_id == "456"
+    assert parsed.chat_id == "789"
+    assert parsed.message_id == "123"
+    assert parsed.text == "Test message"
+
