@@ -11,54 +11,61 @@ const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN || '';
 
 const logger = pino({ level: 'silent' });
 
-async function startBridge() {
+// Global Python client and WhatsApp socket references
+let pyClient = null;
+let sock = null;
+
+// Start WebSocket Server once
+const wss = new WebSocket.Server({ port: PORT, host: '127.0.0.1' });
+console.log(`WebSocket bridge server listening on ws://127.0.0.1:${PORT}`);
+
+wss.on('connection', (ws, req) => {
+    console.log("Python client connected to bridge.");
+    pyClient = ws;
+
+    ws.on('message', async (message) => {
+        try {
+            const data = JSON.parse(message);
+            
+            if (data.type === 'auth') {
+                if (data.token !== BRIDGE_TOKEN) {
+                    console.error("Authentication failed: Invalid token");
+                    ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized' }));
+                    ws.close();
+                } else {
+                    console.log("Python client authenticated successfully.");
+                    ws.send(JSON.stringify({ type: 'authenticated' }));
+                }
+                return;
+            }
+
+            if (data.type === 'send') {
+                const { to, text } = data;
+                if (sock) {
+                    console.log(`Sending message to ${to}: ${text}`);
+                    await sock.sendMessage(to, { text });
+                } else {
+                    console.error("Cannot send message: WhatsApp socket not initialized.");
+                }
+            }
+        } catch (err) {
+            console.error("Error processing message from python client:", err);
+        }
+    });
+
+    ws.on('close', () => {
+        console.log("Python client disconnected.");
+        pyClient = null;
+    });
+});
+
+async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
     
-    const sock = makeWASocket({
+    sock = makeWASocket({
         auth: state,
         logger,
         printQRInTerminal: false
-    });
-
-    const wss = new WebSocket.Server({ port: PORT, host: '127.0.0.1' });
-    let pyClient = null;
-
-    console.log(`WebSocket bridge server listening on ws://127.0.0.1:${PORT}`);
-
-    wss.on('connection', (ws, req) => {
-        console.log("Python client connected to bridge.");
-        pyClient = ws;
-
-        ws.on('message', async (message) => {
-            try {
-                const data = JSON.parse(message);
-                
-                if (data.type === 'auth') {
-                    if (data.token !== BRIDGE_TOKEN) {
-                        console.error("Authentication failed: Invalid token");
-                        ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized' }));
-                        ws.close();
-                    } else {
-                        console.log("Python client authenticated successfully.");
-                        ws.send(JSON.stringify({ type: 'authenticated' }));
-                    }
-                    return;
-                }
-
-                if (data.type === 'send') {
-                    const { to, text } = data;
-                    console.log(`Sending message to ${to}: ${text}`);
-                    await sock.sendMessage(to, { text });
-                }
-            } catch (err) {
-                console.error("Error processing message from python client:", err);
-            }
-        });
-
-        ws.on('close', () => {
-            console.log("Python client disconnected.");
-            pyClient = null;
-        });
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -77,7 +84,7 @@ async function startBridge() {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
             if (shouldReconnect) {
-                startBridge();
+                connectToWhatsApp();
             }
         } else if (connection === 'open') {
             console.log('Connected to WhatsApp Web via Baileys!');
@@ -119,6 +126,7 @@ async function startBridge() {
     });
 }
 
-startBridge().catch(err => {
-    console.error("Error starting WhatsApp bridge:", err);
+connectToWhatsApp().catch(err => {
+    console.error("Error starting WhatsApp client:", err);
 });
+
