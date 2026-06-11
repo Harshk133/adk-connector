@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="assets/adk-connector.png" alt="ADK Connectors" width="400" />
+  <img src="https://raw.githubusercontent.com/Harshk133/adk-connector/main/assets/adk-connector.png" alt="ADK Connectors" width="400" />
 </p>
 
 <h1 align="center">ADK Connectors</h1>
@@ -25,7 +25,7 @@ Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.
 
 [https://github.com/Harshk133/adk-connector/raw/main/assets/adk-connector-demo.mov](https://github.com/user-attachments/assets/e19ded5d-fcca-4f17-b0e4-390d95c7c4dd)
 
-*(If the video does not load or play automatically, you can view the file directly at [assets/adk-connector-demo.mov](assets/adk-connector-demo.mov).)*
+*(If the video does not load or play automatically, you can view the file directly at [assets/adk-connector-demo.mov](https://github.com/Harshk133/adk-connector/blob/main/assets/adk-connector-demo.mov).)*
 
 ---
 
