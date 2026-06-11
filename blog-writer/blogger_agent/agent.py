@@ -41,8 +41,8 @@ from blogger_agent.tools import analyze_codebase, save_blog_post_to_file
     # TELEGRAM_BOT_TOKEN=ur-telegram-bot-token
     # TELEGRAM_USER_ID=ur-telegram-user-id 
 
-# STEP 4: Import the TelegramConnector and bind it to your agent
-from adk_connectors.telegram import TelegramConnector
+# STEP 4: Import the DiscordConnector and bind it to your agent
+from adk_connectors.discord import DiscordConnector
 
 
 # --- AGENT DEFINITIONS ---
@@ -92,18 +92,18 @@ interactive_blogger_agent = Agent(
 root_agent = interactive_blogger_agent
 
 if __name__ == "__main__":
-    from adk_connectors.telegram import TelegramConnector
+    from adk_connectors.discord import DiscordConnector
     
-    # STEP 5:Retrieve your Telegram Bot Token
-    token = config.token
+    # STEP 5: Retrieve your Discord Bot Token
+    token = os.getenv("DISCORD_BOT_TOKEN")
     
     # STEP 6: Bind the connector
-    connector = TelegramConnector(
+    connector = DiscordConnector(
         token=token,
         agent=root_agent,
         session_management_across_device=True,  # Spin up DB & mapping persistence
-        dev_user_id=config.telegram_user_id,  # Optional: Restrict access to specific Telegram user ID(s)
+        dev_user_id=os.getenv("DISCORD_USER_ID"),  # Optional: Restrict access to specific Discord user ID(s)
     )
     
-    # STEP 7: Start polling!
+    # STEP 7: Start the bot!
     connector.start()
