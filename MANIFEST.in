@@ -1,0 +1,2 @@
+recursive-include adk_connectors/whatsapp/bridge *.js *.json
+recursive-exclude adk_connectors/whatsapp/bridge/node_modules *

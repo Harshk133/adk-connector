@@ -44,8 +44,16 @@ Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.
 This repository contains connectors for both **Python** and **JavaScript / TypeScript**.
 
 ### 🐍 Python (`adk-connector`)
+You can install specific platform connectors or install all of them at once:
+
 ```bash
-pip install adk-connector
+# Install individual connectors:
+pip install "adk-connector[telegram]"
+pip install "adk-connector[discord]"
+pip install "adk-connector[whatsapp]"
+
+# Or install all connectors:
+pip install "adk-connector[all]"
 ```
 For database-backed cross-device session synchronization (e.g. `adk web` UI), install the DB components:
 ```bash
@@ -148,7 +156,6 @@ if __name__ == "__main__":
         token=token,
         agent=assistant
     )
-    
     # 4. Start the bot!
     connector.start()
 ```
@@ -157,6 +164,47 @@ if __name__ == "__main__":
 ```bash
 python agent.py
 ```
+
+### 🐍 Python Quick Start (WhatsApp)
+
+The WhatsApp connector leverages a lightweight Node.js child process executing the `@whiskeysockets/baileys` library under the hood. There are **zero binary Python dependencies**.
+
+#### 🛠️ Prerequisites
+Ensure you have **Node.js (>= 18)** and **npm** installed on your system. The connector will automatically set up its internal JS dependencies on first run.
+
+#### 1. Write the code (`agent.py`)
+```python
+from google.adk.agents.llm_agent import Agent
+from adk_connectors.whatsapp import WhatsAppWebConnector
+
+# 1. Define your standard Google ADK Agent
+assistant = Agent(
+    model='gemini-2.5-flash',
+    name='my_assistant',
+    instruction='You are a helpful assistant.'
+)
+
+if __name__ == "__main__":
+    # 2. Bind the connector
+    connector = WhatsAppWebConnector(
+        agent=assistant
+    )
+    
+    # 3. Start the bot!
+    connector.start()
+```
+
+#### 2. Run the Script
+```bash
+python agent.py
+```
+
+#### 3. Scan the QR Code
+On first run, a QR code will be generated and printed directly in your terminal.
+1. Open **WhatsApp** on your phone.
+2. Go to **Settings** > **Linked Devices** > **Link a Device**.
+3. Point your phone camera to scan the QR code printed in the terminal.
+4. Once paired, test the bot by sending a message like `"hi"` to yourself (**Message Yourself** chat) or have any contact message your phone.
 
 ### 🟨 JavaScript / TypeScript Quick Start
 
@@ -217,6 +265,13 @@ connector = DiscordConnector(
     session_management_across_device=True,
     dev_user_id=os.getenv("DISCORD_USER_ID")
 )
+
+# For WhatsApp Setup:
+connector = WhatsAppWebConnector(
+    agent=assistant,
+    session_management_across_device=True,
+    dev_user_id=os.getenv("WHATSAPP_USER_ID") # e.g. "919421616978" or your account JID/LID JID
+)
 ```
 
 ### 2. Run the Bot & Web Server
@@ -256,7 +311,7 @@ Running multi-agent code directly as a script (`python -m package.module`) often
 
 - [x] **Telegram Connector** (v0.1.0)
 - [x] **Discord Connector** (v0.2.2)
-- [ ] **WhatsApp Connector** (Planned)
+- [x] **WhatsApp Connector** (v0.3.0)
 - [ ] **Slack Connector** (Planned)
 
 ---

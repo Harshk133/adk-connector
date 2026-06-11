@@ -1,0 +1,12 @@
+{
+  "name": "adk-whatsapp-bridge",
+  "version": "1.0.0",
+  "description": "WhatsApp Baileys bridge for ADK Connectors",
+  "main": "bridge.js",
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "ws": "^8.17.1",
+    "qrcode-terminal": "^0.12.0",
+    "pino": "^9.0.0"
+  }
+}
