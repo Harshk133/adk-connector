@@ -268,3 +268,43 @@ def test_discord_parser():
     assert parsed.message_id == "123"
     assert parsed.text == "Test message"
 
+
+def test_whatsapp_config():
+    from adk_connectors.whatsapp.config import WhatsAppConfig
+    cfg = WhatsAppConfig()
+    assert cfg.port == 3001
+    assert cfg.host == "127.0.0.1"
+    assert cfg.bridge_token is None
+
+def test_whatsapp_connector_alias():
+    from adk_connectors.whatsapp.connector import WhatsAppConnector, WhatsAppWebConnector
+    assert WhatsAppConnector is WhatsAppWebConnector
+
+@pytest.mark.asyncio
+async def test_whatsapp_adapter_mock():
+    from adk_connectors.whatsapp.config import WhatsAppConfig
+    from adk_connectors.whatsapp.adapter import WhatsAppAdapter
+    from unittest.mock import MagicMock, AsyncMock
+    import asyncio
+    
+    cfg = WhatsAppConfig(port=9999, host="127.0.0.1", bridge_token="test_token")
+    adapter = WhatsAppAdapter(cfg)
+    
+    from unittest.mock import patch
+    
+    with patch("subprocess.Popen") as mock_popen, \
+         patch("websockets.connect", new_callable=AsyncMock) as mock_connect, \
+         patch("shutil.which", return_value="/usr/bin/node") as mock_which, \
+         patch("os.path.exists", return_value=True):
+         
+        mock_ws = AsyncMock()
+        mock_connect.return_value = mock_ws
+        
+        await adapter.start()
+        
+        assert adapter._is_running is True
+        assert adapter.config.bridge_token == "test_token"
+        
+        await adapter.stop()
+
+

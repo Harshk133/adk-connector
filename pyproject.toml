@@ -29,7 +29,9 @@ telegram = []
 discord = [
     "discord.py>=2.0.0"
 ]
-whatsapp = []
+whatsapp = [
+    "websockets>=10.0"
+]
 all = [
     "adk-connector[telegram]",
     "adk-connector[discord]",
