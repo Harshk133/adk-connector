@@ -1,3 +1,4 @@
+
 <p align="center">
   <img src="assets/adk-connector.png" alt="ADK Connectors" width="400" />
 </p>
@@ -20,9 +21,9 @@ By adding just a few lines of code, you can bridge the gap between local develop
 
 ## 🎥 Setup Demo: `adk-connector` with the `blog-writer` Agent
 
-Below is a walkthrough showing how to set up the `adk-connector` Python package in the official `blog-writer` example project:
+Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.org/project/adk-connector/) Python package in the official [`blog-writer`](https://github.com/google/adk-samples/tree/main/python/agents/blog-writer) example project:
 
-https://github.com/Harshk133/adk-connector/raw/main/assets/adk-connector-demo.mov
+[https://github.com/Harshk133/adk-connector/raw/main/assets/adk-connector-demo.mov](https://github.com/user-attachments/assets/e19ded5d-fcca-4f17-b0e4-390d95c7c4dd)
 
 *(If the video does not load or play automatically, you can view the file directly at [assets/adk-connector-demo.mov](assets/adk-connector-demo.mov).)*
 
@@ -205,9 +206,9 @@ Running multi-agent code directly as a script (`python -m package.module`) often
 ## 🗺️ Roadmap
 
 - [x] **Telegram Connector** (v0.1.0)
-- [ ] **WhatsApp Connector** (Planned for v0.2.0)
-- [ ] **Discord Connector** (Planned for v0.3.0)
-- [ ] **Slack Connector** (Planned for v0.4.0)
+- [x] **Discord Connector** (v0.2.2)
+- [ ] **WhatsApp Connector** (Planned)
+- [ ] **Slack Connector** (Planned)
 
 ---
 
