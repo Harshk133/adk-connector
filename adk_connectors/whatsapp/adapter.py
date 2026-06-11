@@ -5,6 +5,7 @@ import json
 import shutil
 import subprocess
 import secrets
+import socket
 from typing import Optional, Dict, Any
 import websockets
 
@@ -26,9 +27,29 @@ class WhatsAppAdapter(BaseAdapter):
         self._listen_task: Optional[asyncio.Task] = None
         self._is_running = False
 
+    def _find_free_port(self, start_port: int) -> int:
+        port = start_port
+        while port < 65535:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(("127.0.0.1", port))
+                    return port
+                except OSError:
+                    port += 1
+        return start_port
+
     async def start(self) -> None:
         self._is_running = True
         
+        # 0. Find a free port starting from the configured port to avoid EACCES / conflicts
+        original_port = self.config.port
+        self.config.port = self._find_free_port(original_port)
+        if self.config.port != original_port:
+            logger.warning(
+                f"Port {original_port} is restricted, busy, or permission denied. "
+                f"Automatically selected free port {self.config.port} instead."
+            )
+            
         # 1. Setup default config paths and token if not set
         if not self.config.bridge_token:
             self.config.bridge_token = secrets.token_urlsafe(32)
