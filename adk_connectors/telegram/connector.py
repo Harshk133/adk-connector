@@ -20,10 +20,13 @@ class TelegramConnector:
         app_name: Optional[str] = None,
         session_management_across_device: bool = False,
         dev_user_id: Optional[str] = None,
+        tunnel: bool = False,
+        webhook_secret: Optional[str] = None,
     ):
         self.config = TelegramConfig(
             token=token,
-            poll_interval=poll_interval
+            poll_interval=poll_interval,
+            webhook_secret=webhook_secret
         )
         self.adapter = TelegramAdapter(self.config)
         
@@ -31,6 +34,9 @@ class TelegramConnector:
             connector_config = ConnectorConfig(
                 formatter=FormatterConfig(streaming=streaming)
             )
+        if tunnel:
+            connector_config.tunnel.enabled = True
+
         self.manager = ConnectorManager(
             agent=agent,
             config=connector_config,

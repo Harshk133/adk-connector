@@ -19,4 +19,6 @@ build/
 secrets.txt
 node_modules/
 auth/
-.adk/
+.adk/
+ideas.md
+whatsapp.md

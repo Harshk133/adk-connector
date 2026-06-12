@@ -41,8 +41,8 @@ from blogger_agent.tools import analyze_codebase, save_blog_post_to_file
     # TELEGRAM_BOT_TOKEN=ur-telegram-bot-token
     # TELEGRAM_USER_ID=ur-telegram-user-id 
 
-# STEP 4: Import the WhatsAppWebConnector and bind it to your agent
-from adk_connectors.whatsapp import WhatsAppWebConnector
+# STEP 4: Import the TelegramConnector and bind it to your agent
+from adk_connectors.telegram import TelegramConnector
 
 
 # --- AGENT DEFINITIONS ---
@@ -87,10 +87,19 @@ interactive_blogger_agent = Agent(
 root_agent = interactive_blogger_agent
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    
     # STEP 6: Bind the connector
-    connector = WhatsAppWebConnector(
+    connector = TelegramConnector(
+        token=config.token,
         agent=root_agent,
+        tunnel=True,
         session_management_across_device=True,
+        dev_user_id=config.telegram_user_id,
     )
     
     # STEP 7: Start the bot!

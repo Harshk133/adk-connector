@@ -125,6 +125,10 @@ class ConnectorManager:
         
         self._runner = None
         self.adapters: List[BaseAdapter] = []
+        self._tunnel_client = None
+        self._web_app = None
+        self._web_runner = None
+        self._web_site = None
 
     def register_adapter(self, adapter: BaseAdapter) -> None:
         self.adapters.append(adapter)
@@ -170,11 +174,122 @@ class ConnectorManager:
 
     async def start(self) -> None:
         logger.info("Starting Connector Manager...")
+        if self.config.tunnel.enabled:
+            await self._start_webhook_server()
+            await self._start_tunnel()
         await asyncio.gather(*(adapter.start() for adapter in self.adapters))
+
+    def _find_free_port(self, start_port: int) -> int:
+        import socket
+        port = start_port
+        while port < 65535:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(("127.0.0.1", port))
+                    return port
+                except OSError:
+                    port += 1
+        return start_port
+
+    async def _start_webhook_server(self) -> None:
+        from aiohttp import web
+        self._web_app = web.Application()
+        self._web_app.router.add_post("/webhooks/{platform}", self._handle_webhook_request)
+        
+        self._web_runner = web.AppRunner(self._web_app)
+        await self._web_runner.setup()
+        
+        host = self.config.tunnel.host
+        original_port = self.config.tunnel.port
+        
+        # Resolve port collision dynamically
+        port = self._find_free_port(original_port)
+        if port != original_port:
+            logger.warning(
+                f"Port {original_port} is busy or restricted. "
+                f"Automatically selected free port {port} instead."
+            )
+            self.config.tunnel.port = port
+            
+        self._web_site = web.TCPSite(self._web_runner, host, port)
+        await self._web_site.start()
+        logger.info(f"Built-in Webhook Server listening on http://{host}:{port}")
+
+    async def _handle_webhook_request(self, request: Any) -> Any:
+        from aiohttp import web
+        platform = request.match_info.get("platform")
+        adapter = next((a for a in self.adapters if a.platform == platform), None)
+        if not adapter:
+            logger.warning(f"Webhook request received for unregistered platform: {platform}")
+            return web.Response(status=404, text=f"No adapter registered for {platform}")
+
+        try:
+            payload = await request.json()
+        except Exception as e:
+            logger.warning(f"Failed to parse webhook JSON payload: {e}")
+            return web.Response(status=400, text="Invalid JSON")
+
+        headers = dict(request.headers)
+
+        parse_func = getattr(adapter, "parse_webhook_payload", None)
+        if parse_func:
+            try:
+                parsed_msg = parse_func(payload, headers=headers)
+                if parsed_msg:
+                    asyncio.create_task(self.handle_incoming_message(parsed_msg))
+            except Exception as pe:
+                logger.error(f"Error parsing webhook payload for platform {platform}: {pe}")
+                return web.Response(status=500, text="Internal parse error")
+        else:
+            logger.warning(f"Adapter for {platform} does not implement parse_webhook_payload")
+            
+        return web.Response(status=200, text="OK")
+
+    async def _start_tunnel(self) -> None:
+        provider = self.config.tunnel.provider
+        port = self.config.tunnel.port
+        host = self.config.tunnel.host
+        authtoken = self.config.tunnel.authtoken
+        
+        if provider == "cloudflare":
+            from adk_connectors.tunnel import CloudflareTunnel
+            self._tunnel_client = CloudflareTunnel(port=port, host=host)
+        elif provider == "ngrok":
+            from adk_connectors.tunnel import NgrokTunnel
+            self._tunnel_client = NgrokTunnel(port=port, authtoken=authtoken)
+        else:
+            raise ValueError(f"Unknown tunnel provider: {provider}")
+
+        public_url = await self._tunnel_client.start()
+        
+        for adapter in self.adapters:
+            if hasattr(adapter, "config") and hasattr(adapter.config, "webhook_url"):
+                adapter.config.webhook_url = f"{public_url}/webhooks/{adapter.platform}"
+                logger.info(f"Configured webhook URL for {adapter.platform}: {adapter.config.webhook_url}")
 
     async def stop(self) -> None:
         logger.info("Stopping Connector Manager...")
+        
+        # Stop adapters
         await asyncio.gather(*(adapter.stop() for adapter in self.adapters))
+        
+        # Stop tunnel client
+        if self._tunnel_client:
+            try:
+                await self._tunnel_client.stop()
+            except Exception as e:
+                logger.error(f"Error stopping tunnel client: {e}")
+            self._tunnel_client = None
+
+        # Stop web server
+        if self._web_runner:
+            try:
+                await self._web_runner.cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up web server runner: {e}")
+            self._web_runner = None
+            self._web_app = None
+            self._web_site = None
 
     async def handle_incoming_message(self, message: IncomingMessage) -> None:
         # Lock session for this user to prevent concurrent race conditions

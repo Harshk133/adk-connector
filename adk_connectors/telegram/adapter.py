@@ -29,6 +29,8 @@ class TelegramAdapter(BaseAdapter):
             if self.config.webhook_secret:
                 payload["secret_token"] = self.config.webhook_secret
             res = await self.client.post("/setWebhook", json=payload)
+            if res.status_code != 200:
+                logger.error(f"Failed to set webhook (HTTP {res.status_code}): {res.text}")
             res.raise_for_status()
         else:
             logger.info("No webhook URL configured. Starting long polling...")
@@ -98,3 +100,12 @@ class TelegramAdapter(BaseAdapter):
             "action": "typing"
         }
         await self.client.post("/sendChatAction", json=payload)
+
+    def parse_webhook_payload(self, payload: Dict[str, Any], headers: Optional[Dict[str, str]] = None) -> Optional[IncomingMessage]:
+        if self.config.webhook_secret and headers:
+            secret = headers.get("X-Telegram-Bot-Api-Secret-Token") or headers.get("x-telegram-bot-api-secret-token")
+            if secret != self.config.webhook_secret:
+                logger.warning("Invalid webhook secret token received.")
+                return None
+        return TelegramParser.parse_update(payload)
+

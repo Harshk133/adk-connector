@@ -308,3 +308,96 @@ async def test_whatsapp_adapter_mock():
         await adapter.stop()
 
 
+@pytest.mark.asyncio
+async def test_connector_manager_webhook_flow():
+    from adk_connectors import ConnectorManager, ConnectorConfig, BaseAdapter, IncomingMessage
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from google.adk.agents.llm_agent import Agent
+    
+    agent = Agent(name="test_agent", model="gemini-2.0-flash")
+    config = ConnectorConfig()
+    config.tunnel.enabled = True
+    config.tunnel.port = 18080
+    config.tunnel.host = "127.0.0.1"
+    
+    manager = ConnectorManager(agent=agent, config=config)
+    
+    class MockWebhookAdapter(BaseAdapter):
+        platform = "mockplatform"
+        def __init__(self):
+            super().__init__()
+            self.config = MagicMock()
+            self.config.webhook_url = None
+            self.start_called = False
+            self.stop_called = False
+            
+        async def start(self):
+            self.start_called = True
+            
+        async def stop(self):
+            self.stop_called = True
+            
+        async def send_message(self, chat_id, message):
+            pass
+            
+        async def edit_message(self, chat_id, message_id, new_content):
+            pass
+            
+        async def set_typing_indicator(self, chat_id):
+            pass
+            
+        def parse_webhook_payload(self, payload, headers=None):
+            return IncomingMessage(
+                platform="mockplatform",
+                user_id="user123",
+                chat_id="chat456",
+                message_id="msg789",
+                text=payload.get("text")
+            )
+            
+    adapter = MockWebhookAdapter()
+    manager.register_adapter(adapter)
+    
+    mock_tunnel = AsyncMock()
+    mock_tunnel.start.return_value = "https://mock.trycloudflare.com"
+    
+    with patch("adk_connectors.tunnel.CloudflareTunnel", return_value=mock_tunnel):
+        await manager.start()
+        
+        assert adapter.start_called is True
+        assert adapter.config.webhook_url == "https://mock.trycloudflare.com/webhooks/mockplatform"
+        
+        import httpx
+        async with httpx.AsyncClient() as client:
+            res = await client.post("http://127.0.0.1:18080/webhooks/mockplatform", json={"text": "hello webhook"})
+            assert res.status_code == 200
+            assert res.text == "OK"
+            
+        await manager.stop()
+        assert adapter.stop_called is True
+        mock_tunnel.stop.assert_called_once()
+
+
+def test_find_free_port():
+    import socket
+    from adk_connectors import ConnectorManager
+    from google.adk.agents.llm_agent import Agent
+    
+    agent = Agent(name="test_agent", model="gemini-2.0-flash")
+    manager = ConnectorManager(agent=agent)
+    
+    # Bind a port manually
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("127.0.0.1", 0))
+    bound_port = s.getsockname()[1]
+    
+    # Find a free port starting from bound_port
+    free_port = manager._find_free_port(bound_port)
+    assert free_port != bound_port
+    assert free_port > bound_port
+    
+    s.close()
+
+
+
+
