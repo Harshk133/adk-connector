@@ -32,6 +32,7 @@ Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.
 ## ✨ Key Features
 
 * 🚀 **3-Line Wrapper**: Deploy any `google-adk` agent (Python or JavaScript/TypeScript) to messaging channels with virtually zero code changes.
+* ⚡ **Auto Tunnel & Webhook Server**: Set `tunnel=True` to automatically spin up a local HTTP server and a Cloudflare Tunnel with zero configuration, an automatic precompiled binary downloader, and port-collision avoidance.
 * 🔄 **Cross-Device Session Sync**: Sync conversations seamlessly. Chat on Telegram or Discord, then inspect and continue the exact same conversation inside the ADK Web UI (`adk web`).
 * 💾 **Automatic Database Engine Setup**: Transparently spins up an asynchronous SQLite backend to record session states, events, and tool invocations.
 * 🔒 **Local Persistent Mapping**: Uses a secure, local JSON mapping engine so restarting the bot never breaks session IDs or active chats.
@@ -127,6 +128,27 @@ if __name__ == "__main__":
 ```bash
 python agent.py
 ```
+
+#### ⚡ Local Webhook Tunneling (No setup required!)
+By default, the Telegram connector uses long-polling to retrieve messages. For faster response times, lower latency, and production parity, you can switch to webhooks using the **Auto-Tunnel** feature:
+
+```python
+    # Bind the connector with webhook tunneling enabled
+    connector = TelegramConnector(
+        token=token,
+        agent=assistant,
+        tunnel=True,  # <-- Spins up HTTP server & Cloudflare tunnel automatically!
+        webhook_secret="optional-webhook-secret-token" # Verify Telegram payloads securely
+    )
+```
+
+##### How it works:
+1. **Auto-Downloader**: If the `cloudflared` executable is not found on your system PATH, the package automatically downloads the official binary for your platform (Windows, macOS, Linux) and caches it globally in your home directory (`~/.adk/bin/`).
+2. **Built-in Web Server**: Starts a background HTTP web server (built on `aiohttp`) on your machine.
+3. **Port Collision Protection**: If the default port (`8000`) is already occupied, the connector automatically finds the next free port to prevent crashes.
+4. **Cloudflare Tunnel**: Spawns a background Cloudflare tunnel (using `trycloudflare.com`) to expose your local port securely to the internet.
+5. **Instant Registration**: Registers the dynamic HTTPS endpoint with Telegram.
+6. **Graceful Teardown**: Closing the bot automatically deletes the webhook registration and shuts down the background tunnel processes cleanly.
 
 ### 🐍 Python Quick Start (Discord)
 
