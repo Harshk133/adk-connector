@@ -43,11 +43,16 @@ class ResearchConfiguration:
         max_search_iterations (int): Maximum search iterations allowed.
     """
 
-    critic_model: str = "openrouter/google/gemini-2.5-flash-lite"
-    worker_model: str = "openrouter/google/gemini-2.5-flash-lite"
+    critic_model: str = "litellm:openrouter/google/gemini-2.5-flash-lite"
+    worker_model: str = "litellm:openrouter/google/gemini-2.5-flash-lite"
     max_search_iterations: int = 2
     token: str = os.getenv("TELEGRAM_BOT_TOKEN")
     telegram_user_id: str = os.getenv("TELEGRAM_USER_ID")
+    discord_token: str = os.getenv("DISCORD_BOT_TOKEN")
+    discord_user_id: str = os.getenv("DISCORD_USER_ID")
+    whatsapp_port: int = int(os.getenv("WHATSAPP_PORT", "3001"))
+    whatsapp_host: str = os.getenv("WHATSAPP_HOST", "127.0.0.1")
+    whatsapp_bridge_token: str = os.getenv("WHATSAPP_BRIDGE_TOKEN")
 
 
 config = ResearchConfiguration()

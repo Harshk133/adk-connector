@@ -41,8 +41,12 @@ from blogger_agent.tools import analyze_codebase, save_blog_post_to_file
     # TELEGRAM_BOT_TOKEN=ur-telegram-bot-token
     # TELEGRAM_USER_ID=ur-telegram-user-id 
 
-# STEP 4: Import the TelegramConnector and bind it to your agent
+# STEP 4: Import the connectors and ConnectorManager
+from adk_connectors import ConnectorManager
 from adk_connectors.telegram import TelegramConnector
+from adk_connectors.discord import DiscordConnector
+from adk_connectors.whatsapp import WhatsAppConnector
+
 
 
 # --- AGENT DEFINITIONS ---
@@ -93,14 +97,55 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     
-    # STEP 6: Bind the connector
-    connector = TelegramConnector(
-        token=config.token,
+    logger = logging.getLogger("blogger_agent.main")
+    
+    platforms = []
+    
+    # 1. Configure Telegram Connector if token is available
+    if config.token:
+        logger.info("Configuring Telegram Connector...")
+        platforms.append(
+            TelegramConnector(
+                token=config.token,
+                streaming=True,
+                tunnel=True,
+            )
+        )
+    else:
+        logger.warning("TELEGRAM_BOT_TOKEN not found. Skipping Telegram Connector.")
+
+    # 2. Configure Discord Connector if token is available
+    if config.discord_token:
+        logger.info("Configuring Discord Connector...")
+        platforms.append(
+            DiscordConnector(
+                token=config.discord_token,
+                streaming=True,
+            )
+        )
+    else:
+        logger.warning("DISCORD_BOT_TOKEN not found. Skipping Discord Connector.")
+
+    # 3. Configure WhatsApp Connector
+    logger.info("Configuring WhatsApp Connector...")
+    platforms.append(
+        WhatsAppConnector(
+            port=config.whatsapp_port,
+            host=config.whatsapp_host,
+            bridge_token=config.whatsapp_bridge_token,
+        )
+    )
+
+    dev_user_id = config.telegram_user_id or config.discord_user_id
+
+    # STEP 6: Bind the connector manager to all platforms
+    manager = ConnectorManager(
         agent=root_agent,
-        tunnel=True,
+        platforms=platforms,
         session_management_across_device=True,
-        dev_user_id=config.telegram_user_id,
+        dev_user_id=dev_user_id,
     )
     
-    # STEP 7: Start the bot!
-    connector.start()
+    # STEP 7: Start the bot manager!
+    manager.start_sync()
+

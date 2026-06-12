@@ -61,13 +61,14 @@ def _find_all_placeholders(agent) -> set[str]:
 class ConnectorManager:
     def __init__(
         self,
-        agent: Any,
+        agent: Optional[Any] = None,
         config: Optional[ConnectorConfig] = None,
         session_storage: Optional[Any] = None,
         adk_session_service: Optional[Any] = None,
         app_name: Optional[str] = None,
         session_management_across_device: bool = False,
         dev_user_id: Optional[str] = None,
+        platforms: Optional[List[Any]] = None,
     ):
         self.agent = agent
         self.config = config or ConnectorConfig()
@@ -130,12 +131,41 @@ class ConnectorManager:
         self._web_runner = None
         self._web_site = None
 
+        if platforms:
+            for platform in platforms:
+                self.register_platform(platform)
+
     def register_adapter(self, adapter: BaseAdapter) -> None:
         self.adapters.append(adapter)
         adapter.register_message_handler(self.handle_incoming_message)
 
+    def register_platform(self, platform: Any) -> None:
+        """
+        Registers a platform connector or adapter to the manager.
+        """
+        if platform is None:
+            return
+            
+        # Check if platform is a connector wrapping an adapter
+        if hasattr(platform, "adapter") and platform.adapter is not None:
+            adapter = platform.adapter
+            self.register_adapter(adapter)
+            # Link the connector to this manager so it knows it is managed centrally
+            if hasattr(platform, "manager"):
+                platform.manager = self
+        # Or if the platform is directly an adapter subclassing BaseAdapter
+        elif hasattr(platform, "register_message_handler"):
+            self.register_adapter(platform)
+        else:
+            raise TypeError(
+                f"Expected a platform connector wrapping an adapter or a BaseAdapter subclass, "
+                f"got {type(platform).__name__}"
+            )
+
     def _get_runner(self) -> Any:
         if self._runner is None:
+            if self.agent is None:
+                raise ValueError("Agent must be set on ConnectorManager before running.")
             from google.adk.runners import Runner
             
             if self.app_name:
@@ -168,9 +198,6 @@ class ConnectorManager:
                 auto_create_session=True
             )
         return self._runner
-
-
-
 
     async def start(self) -> None:
         logger.info("Starting Connector Manager...")
@@ -290,6 +317,34 @@ class ConnectorManager:
             self._web_runner = None
             self._web_app = None
             self._web_site = None
+
+    def start_sync(self) -> None:
+        """
+        Starts the Connector Manager and all registered platforms synchronously.
+        """
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        logger.info("Starting Connector Manager... Press Ctrl+C to stop.")
+        try:
+            loop.run_until_complete(self.start())
+            loop.run_forever()
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("KeyboardInterrupt received. Shutting down gracefully...")
+        finally:
+            try:
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(self.stop())
+            except Exception as e:
+                logger.error(f"Error during shutdown: {e}")
+            logger.info("Stopped.")
 
     async def handle_incoming_message(self, message: IncomingMessage) -> None:
         # Lock session for this user to prevent concurrent race conditions

@@ -11,7 +11,7 @@ class DiscordConnector:
     def __init__(
         self,
         token: str,
-        agent: Any,
+        agent: Optional[Any] = None,
         streaming: bool = True,
         session_storage: Optional[Any] = None,
         adk_session_service: Optional[Any] = None,
@@ -29,21 +29,29 @@ class DiscordConnector:
             connector_config = ConnectorConfig(
                 formatter=FormatterConfig(streaming=streaming)
             )
-        self.manager = ConnectorManager(
-            agent=agent,
-            config=connector_config,
-            session_storage=session_storage,
-            adk_session_service=adk_session_service,
-            app_name=app_name,
-            session_management_across_device=session_management_across_device,
-            dev_user_id=dev_user_id
-        )
-        self.manager.register_adapter(self.adapter)
+        if agent is not None:
+            self.manager = ConnectorManager(
+                agent=agent,
+                config=connector_config,
+                session_storage=session_storage,
+                adk_session_service=adk_session_service,
+                app_name=app_name,
+                session_management_across_device=session_management_across_device,
+                dev_user_id=dev_user_id
+            )
+            self.manager.register_adapter(self.adapter)
+        else:
+            self.manager = None
 
     def start(self) -> None:
         """
         Starts the Discord connector synchronously.
         """
+        if self.manager is None:
+            raise ValueError(
+                "Cannot start connector directly because no agent was provided during initialization. "
+                "Pass this connector to a central ConnectorManager instead."
+            )
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
