@@ -399,5 +399,68 @@ def test_find_free_port():
     s.close()
 
 
+def test_multi_platform_connector_registration():
+    import pytest
+    from adk_connectors import ConnectorManager, BaseAdapter
+    from adk_connectors.telegram import TelegramConnector
+    from adk_connectors.discord import DiscordConnector
+    from google.adk.agents.llm_agent import Agent
+
+    agent = Agent(name="test_agent", model="gemini-2.0-flash")
+
+    # 1. Verify connector raises error if start is called when agent is None
+    telegram_conn_no_agent = TelegramConnector(token="mock_telegram_token")
+    assert telegram_conn_no_agent.manager is None
+    with pytest.raises(ValueError, match="Cannot start connector directly because no agent was provided"):
+        telegram_conn_no_agent.start()
+
+    discord_conn_no_agent = DiscordConnector(token="mock_discord_token")
+    assert discord_conn_no_agent.manager is None
+    with pytest.raises(ValueError, match="Cannot start connector directly because no agent was provided"):
+        discord_conn_no_agent.start()
+
+    # 2. Verify ConnectorManager raises error when _get_runner is called without an agent
+    manager_no_agent = ConnectorManager(platforms=[telegram_conn_no_agent])
+    with pytest.raises(ValueError, match="Agent must be set on ConnectorManager before running."):
+        manager_no_agent._get_runner()
+
+    # 3. Verify ConnectorManager accepts platforms, registers their adapters, and binds connectors
+    manager = ConnectorManager(
+        agent=agent,
+        platforms=[
+            telegram_conn_no_agent,
+            discord_conn_no_agent
+        ]
+    )
+
+    # Both adapters should be registered
+    assert len(manager.adapters) == 2
+    assert any(a.platform == "telegram" for a in manager.adapters)
+    assert any(a.platform == "discord" for a in manager.adapters)
+
+    # Connector manager attributes should be updated to point to the central manager
+    assert telegram_conn_no_agent.manager is manager
+    assert discord_conn_no_agent.manager is manager
+
+    # 4. Verify registering a raw adapter directly works
+    class MockRawAdapter(BaseAdapter):
+        platform = "mock_raw"
+        async def start(self): pass
+        async def stop(self): pass
+        async def send_message(self, chat_id, message): pass
+        async def edit_message(self, chat_id, message_id, new_content): pass
+        async def set_typing_indicator(self, chat_id): pass
+
+    raw_adapter = MockRawAdapter()
+    manager.register_platform(raw_adapter)
+    assert len(manager.adapters) == 3
+    assert any(a.platform == "mock_raw" for a in manager.adapters)
+
+    # 5. Verify type error is raised when registering invalid platform
+    with pytest.raises(TypeError, match="Expected a platform connector wrapping an adapter or a BaseAdapter subclass"):
+        manager.register_platform("invalid_platform_type")
+
+
+
 
 

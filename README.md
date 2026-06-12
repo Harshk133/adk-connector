@@ -264,6 +264,69 @@ npx tsx agent.ts
 
 ---
 
+## 🌐 Unified Multi-Platform Deployment (New in v0.4.1)
+
+If you want to deploy one agent across **multiple platforms simultaneously** (e.g., Telegram, Discord, and WhatsApp concurrently), you can use the `ConnectorManager` as a central hub.
+
+Instead of running separate scripts or instances, you initialize the platform connectors without an `agent` argument, pass them into `ConnectorManager`, and run them together using `start_sync()`.
+
+### 🐍 Python Multi-Platform Example
+
+```python
+import os
+from dotenv import load_dotenv
+from google.adk.agents.llm_agent import Agent
+from adk_connectors import ConnectorManager
+from adk_connectors.telegram import TelegramConnector
+from adk_connectors.discord import DiscordConnector
+from adk_connectors.whatsapp import WhatsAppConnector
+
+# Load environment variables from .env
+load_dotenv()
+
+# 1. Define your standard Google ADK Agent
+assistant = Agent(
+    model='gemini-2.5-flash',
+    name='my_assistant',
+    instruction='You are a helpful assistant.'
+)
+
+if __name__ == "__main__":
+    platforms = []
+
+    # Initialize Telegram if token is set
+    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if telegram_token:
+        platforms.append(
+            TelegramConnector(token=telegram_token, streaming=True, tunnel=True)
+        )
+
+    # Initialize Discord if token is set
+    discord_token = os.getenv("DISCORD_BOT_TOKEN")
+    if discord_token:
+        platforms.append(
+            DiscordConnector(token=discord_token, streaming=True)
+        )
+
+    # Initialize WhatsApp (uses local Bridge server)
+    platforms.append(
+        WhatsAppConnector(port=3001)
+    )
+
+    # 2. Pass all platforms to the central manager
+    manager = ConnectorManager(
+        agent=assistant,
+        platforms=platforms,
+        session_management_across_device=True,
+        dev_user_id=os.getenv("TELEGRAM_USER_ID") # Maps to user namespace for sync
+    )
+
+    # 3. Start all bots concurrently!
+    manager.start_sync()
+```
+
+---
+
 ## 🔄 Python Advanced Setup: Session Synchronization (with `adk web`)
 
 The advanced setup enables the unified cross-device sync engine so you can chat with your bot on Telegram or Discord, and view, inspect, or continue the exact same conversation inside the local **ADK Web UI** (`adk web`).

@@ -10,7 +10,7 @@ logger = logging.getLogger("adk_connectors.whatsapp")
 class WhatsAppConnector:
     def __init__(
         self,
-        agent: Any,
+        agent: Optional[Any] = None,
         port: int = 3001,
         host: str = "127.0.0.1",
         bridge_token: Optional[str] = None,
@@ -35,21 +35,29 @@ class WhatsAppConnector:
             connector_config = ConnectorConfig(
                 formatter=FormatterConfig(streaming=False)
             )
-        self.manager = ConnectorManager(
-            agent=agent,
-            config=connector_config,
-            session_storage=session_storage,
-            adk_session_service=adk_session_service,
-            app_name=app_name,
-            session_management_across_device=session_management_across_device,
-            dev_user_id=dev_user_id
-        )
-        self.manager.register_adapter(self.adapter)
+        if agent is not None:
+            self.manager = ConnectorManager(
+                agent=agent,
+                config=connector_config,
+                session_storage=session_storage,
+                adk_session_service=adk_session_service,
+                app_name=app_name,
+                session_management_across_device=session_management_across_device,
+                dev_user_id=dev_user_id
+            )
+            self.manager.register_adapter(self.adapter)
+        else:
+            self.manager = None
 
     def start(self) -> None:
         """
         Starts the WhatsApp connector process synchronously.
         """
+        if self.manager is None:
+            raise ValueError(
+                "Cannot start connector directly because no agent was provided during initialization. "
+                "Pass this connector to a central ConnectorManager instead."
+            )
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
