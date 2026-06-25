@@ -6,6 +6,7 @@
 <h1 align="center">ADK Connectors</h1>
 
 <p align="center">
+  <a href="https://adk.dev/integrations/adk-connector/"><img src="https://img.shields.io/badge/Featured on-adk.dev-orange?logo=google" alt="Featured On adk.dev" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <a href="https://www.python.org"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python Version" /></a>
   <a href="https://pypi.org/project/adk-connector/"><img src="https://badge.fury.io/py/adk-connector.svg" alt="PyPI version" /></a>
