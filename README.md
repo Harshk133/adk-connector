@@ -12,6 +12,7 @@
   <a href="https://pypi.org/project/adk-connector/"><img src="https://badge.fury.io/py/adk-connector.svg" alt="PyPI version" /></a>
   <a href="https://www.npmjs.com/package/adk-connector-js"><img src="https://badge.fury.io/js/adk-connector-js.svg" alt="NPM version" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D%2018.0.0-green.svg" alt="Node Version" /></a>
+   <a href="https://pepy.tech/projects/adk-connector"><img src="https://static.pepy.tech/personalized-badge/adk-connector?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" alt="PyPI Downloads"></a>
 </p>
 
 **ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, WhatsApp, and Slack. 
