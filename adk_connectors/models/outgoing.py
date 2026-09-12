@@ -12,4 +12,5 @@ class OutgoingMessage(BaseModel):
     reply_to_message_id: Optional[str] = None
     inline_keyboard: Optional[List[List[InlineButton]]] = None
     media_url: Optional[str] = None
-    media_type: Optional[str] = None  # photo, document, etc.
+    media_type: Optional[str] = None  # photo, document, voice, etc.
+    media_bytes: Optional[bytes] = None

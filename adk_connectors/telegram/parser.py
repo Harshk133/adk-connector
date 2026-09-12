@@ -23,19 +23,28 @@ class TelegramParser:
         media_type = MediaType.TEXT
         file_name = None
         
+        media_url = None
         if "photo" in message_data:
             media_type = MediaType.PHOTO
             photo_sizes = message_data["photo"]
             if photo_sizes:
                 file_name = photo_sizes[-1].get("file_id")
+                media_url = file_name
         elif "document" in message_data:
             media_type = MediaType.DOCUMENT
             doc = message_data["document"]
             file_name = doc.get("file_name")
+            media_url = doc.get("file_id")
         elif "voice" in message_data:
             media_type = MediaType.VOICE
             voice = message_data["voice"]
             file_name = voice.get("file_id")
+            media_url = voice.get("file_id")
+        elif "audio" in message_data:
+            media_type = MediaType.VOICE
+            audio = message_data["audio"]
+            file_name = audio.get("file_id")
+            media_url = audio.get("file_id")
             
         return IncomingMessage(
             platform="telegram",
@@ -44,6 +53,7 @@ class TelegramParser:
             message_id=message_id,
             text=text,
             media_type=media_type,
+            media_url=media_url,
             file_name=file_name,
             raw_update=update
         )
