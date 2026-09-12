@@ -22,6 +22,9 @@ class TelegramConnector:
         dev_user_id: Optional[str] = None,
         tunnel: bool = False,
         webhook_secret: Optional[str] = None,
+        voice_transcriber: Optional[Any] = None,
+        voice_synthesizer: Optional[Any] = None,
+        on_turn_completed: Optional[Any] = None,
     ):
         self.config = TelegramConfig(
             token=token,
@@ -45,7 +48,10 @@ class TelegramConnector:
                 adk_session_service=adk_session_service,
                 app_name=app_name,
                 session_management_across_device=session_management_across_device,
-                dev_user_id=dev_user_id
+                dev_user_id=dev_user_id,
+                voice_transcriber=voice_transcriber,
+                voice_synthesizer=voice_synthesizer,
+                on_turn_completed=on_turn_completed,
             )
             self.manager.register_adapter(self.adapter)
         else:
