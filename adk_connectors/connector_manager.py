@@ -9,7 +9,7 @@ from adk_connectors.session_manager import SessionManager
 from adk_connectors.message_processor import MessageProcessor
 from adk_connectors.response_formatter import ResponseFormatter
 from adk_connectors.config import ConnectorConfig
-from adk_connectors.models.incoming import IncomingMessage
+from adk_connectors.models.incoming import IncomingMessage, MediaType
 from adk_connectors.models.outgoing import OutgoingMessage
 from adk_connectors.storage.memory import MemorySessionStorage
 
