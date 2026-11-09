@@ -24,6 +24,13 @@ dependencies = [
     "aiosqlite>=0.19.0",
 ]
 
+[project.urls]
+Homepage = "https://harshk133.github.io/adk-connector/"
+Documentation = "https://github.com/Harshk133/adk-connector#readme"
+Repository = "https://github.com/Harshk133/adk-connector"
+Issues = "https://github.com/Harshk133/adk-connector/issues"
+"ADK Integration" = "https://adk.dev/integrations/adk-connector/"
+
 [project.optional-dependencies]
 telegram = []
 discord = [

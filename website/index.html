@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--page-->
+<title>ADK Connectors</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Run any Google ADK agent as a Telegram, Discord or WhatsApp bot.">
+<meta property="og:title" content="ADK Connectors">
+<meta property="og:description" content="Run any Google ADK agent as a Telegram, Discord or WhatsApp bot.">
+<meta property="og:image" content="https://harshk133.github.io/adk-connector/assets/adk-connector-logo-render.webp">
+<link rel="icon" href="assets/adk-connector-logo-render.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<!--/head-->
+</head>
+<body>
+<div class="stage" id="stage" aria-hidden="true">
+  <img class="poster" src="assets/adk-connector-logo-render.webp" alt="" width="1000" height="1000">
+  <canvas id="logo-canvas"></canvas>
+</div>
+<div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+
+<header class="site-header">
+  <a class="brand" href="#top">
+    <img src="assets/adk-connector-logo-render.webp" alt="" width="32" height="32">
+    <span>ADK Connectors</span>
+  </a>
+  <nav aria-label="Project links">
+    <a href="https://github.com/Harshk133/adk-connector">GitHub</a>
+    <a href="https://pypi.org/project/adk-connector/">PyPI</a>
+    <a class="hide-small" href="https://adk.dev/integrations/adk-connector/">adk.dev</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="chapter hero copy-left" data-pose="hero" data-tint="blue">
+    <div class="copy">
+      <p class="eyebrow">Open source connectors for Google ADK</p>
+      <h1>Put your ADK agent in every chat.</h1>
+      <p class="lede">ADK Connectors runs any Google ADK agent as a Telegram, Discord or WhatsApp bot. You keep your agent. The package handles the messaging.</p>
+      <div class="actions">
+        <button class="install" type="button" data-copy="pip install adk-connector">
+          <code>pip install adk-connector</code><span data-copy-label>Copy</span>
+        </button>
+        <a class="link-button" href="https://github.com/Harshk133/adk-connector">View on GitHub</a>
+      </div>
+      <p class="scroll-cue">Scroll to take the logo apart and see how each piece works</p>
+    </div>
+  </section>
+
+  <section class="chapter copy-left" data-pose="wrap" data-tint="blue" style="--accent: var(--blue)">
+    <div class="copy">
+      <p class="eyebrow">adk_connectors.telegram</p>
+      <h2>Three lines from agent to bot.</h2>
+      <p>Import a connector, give it your agent and a bot token, and call <code>start()</code>. Your agent code stays exactly as it is.</p>
+      <pre class="code" tabindex="0"><code><span class="k">from</span> adk_connectors.telegram <span class="k">import</span> TelegramConnector
+
+connector = TelegramConnector(token=token, agent=assistant)
+connector.start()</code></pre>
+    </div>
+  </section>
+
+  <section class="chapter copy-right" data-pose="channels" data-tint="green" style="--accent: var(--green)">
+    <div class="copy">
+      <p class="eyebrow">Supported platforms</p>
+      <h2>Telegram, Discord and WhatsApp.</h2>
+      <p>Each connector follows the same pattern, so moving your agent to another platform is a one-line change.</p>
+      <dl class="rows">
+        <div><dt>Telegram</dt><dd>Long polling by default, webhooks when you need them. Markdown becomes Telegram HTML, and inline buttons work.</dd></div>
+        <div><dt>Discord</dt><dd>Built on discord.py, with typing indicators, attachments and interactive buttons.</dd></div>
+        <div><dt>WhatsApp</dt><dd>Pairs with your account by QR code through a local Node.js bridge that installs itself on first run.</dd></div>
+      </dl>
+      <p class="note">Building in TypeScript? <code>adk-connector-js</code> brings the Telegram connector to Node.js.</p>
+    </div>
+  </section>
+
+  <section class="chapter copy-left" data-pose="multi" data-tint="green" style="--accent: var(--green)">
+    <div class="copy">
+      <p class="eyebrow">ConnectorManager</p>
+      <h2>One agent on every platform at once.</h2>
+      <p>Hand your platforms to a single manager. They share one event loop, one agent and one place to configure sessions.</p>
+      <pre class="code" tabindex="0"><code>manager = ConnectorManager(
+    agent=root_agent,
+    platforms=[
+        TelegramConnector(token=telegram_token),
+        DiscordConnector(token=discord_token),
+        WhatsAppConnector(),
+    ],
+)
+manager.start_sync()</code></pre>
+    </div>
+  </section>
+
+  <section class="chapter copy-right" data-pose="streaming" data-tint="red" style="--accent: var(--red)" id="streaming">
+    <div class="copy">
+      <p class="eyebrow">Streaming and formatting</p>
+      <h2>Replies appear as they are written.</h2>
+      <p>The bot edits its message about every 1.5 seconds while your agent works. Long answers are split into chunks of up to 4,096 characters by default, and only the root agent's words reach the chat.</p>
+      <div class="chat" role="img" aria-label="A Telegram bot reply being written live">
+        <p class="bubble user">Summarize today's release notes</p>
+        <p class="bubble bot"><span data-typed>Version 0.5.0 adds Telegram voice messages. Users can send voice notes, and your agent can answer out loud with any speech provider you connect.</span></p>
+        <p class="counter"><span data-typed-count>144</span> / 4096 characters</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter copy-left" data-pose="voice" data-tint="blue" style="--accent: var(--blue)">
+    <div class="copy">
+      <p class="eyebrow">Telegram voice <span class="tag">New in 0.5.0</span></p>
+      <h2>Talk to your agent. Hear it answer.</h2>
+      <p>Voice notes and audio files can reach your agent as text, and its replies can come back as voice notes. Connect any speech provider with plain async functions.</p>
+      <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <dl class="rows mono-terms">
+        <div><dt>voice_transcriber</dt><dd>Turns incoming audio into the text your agent reads.</dd></div>
+        <div><dt>voice_synthesizer</dt><dd>Turns the reply into OGG/Opus audio, or returns <code>None</code> for text only.</dd></div>
+        <div><dt>on_turn_completed</dt><dd>Runs after every reply, ready for logging or storage.</dd></div>
+      </dl>
+      <p class="note">If speech fails, the conversation carries on as text.</p>
+    </div>
+  </section>
+
+  <section class="chapter copy-right" data-pose="sessions" data-tint="yellow" style="--accent: var(--yellow)">
+    <div class="copy">
+      <p class="eyebrow">Cross-device session sync</p>
+      <h2>Start on your phone. Continue in <code class="h-code">adk web</code>.</h2>
+      <p>Turn on session sync and your chats are saved to a local SQLite database. Open <code>adk web</code> to read the same conversation, inspect every tool call and reply from there.</p>
+      <pre class="code" tabindex="0"><code>TelegramConnector(
+    token=token,
+    agent=assistant,
+    session_management_across_device=<span class="k">True</span>,
+    dev_user_id=os.getenv(<span class="s">"TELEGRAM_USER_ID"</span>),
+)</code></pre>
+      <p class="note">Sessions are kept in <code>.adk/session.db</code> and <code>.adk/connector_sessions.json</code>, so restarting the bot keeps every chat. Requires <code>google-adk[db]</code>.</p>
+    </div>
+  </section>
+
+  <section class="chapter copy-left" data-pose="tunnel" data-tint="yellow" style="--accent: var(--yellow)">
+    <div class="copy">
+      <p class="eyebrow">adk_connectors.tunnel</p>
+      <h2>A public webhook from your laptop.</h2>
+      <p>Set <code>tunnel=True</code>. The connector starts a local server, opens a Cloudflare tunnel and points your bot's webhook at it. It downloads <code>cloudflared</code> if it is missing and picks a free port if yours is taken.</p>
+      <pre class="code" tabindex="0"><code>connector = TelegramConnector(
+    token=token, agent=assistant, tunnel=<span class="k">True</span>,
+)
+connector.start()
+
+<span class="c"># https://&lt;random-name&gt;.trycloudflare.com/webhooks/telegram</span></code></pre>
+      <p class="note">Prefer ngrok? Set it as the tunnel provider in <code>ConnectorConfig</code>.</p>
+    </div>
+  </section>
+
+  <section class="chapter copy-right" data-pose="agents" data-tint="red" style="--accent: var(--red)">
+    <div class="copy">
+      <p class="eyebrow">Multi-agent support</p>
+      <h2>Sub-agents work from the first message.</h2>
+      <p>Sub-agents often expect state such as <code>{seminal_paper}</code> before anything has set it. The connector scans the instructions in your agent tree and fills in what is missing, which prevents <code>KeyError</code> crashes.</p>
+      <ul class="tree" aria-label="Agent tree from the blog-writer example">
+        <li class="root">interactive_blogger_agent</li>
+        <li>robust_blog_planner</li>
+        <li>robust_blog_writer</li>
+        <li>blog_editor</li>
+        <li>social_media_writer</li>
+      </ul>
+      <p class="note">This is the agent tree from the <code>blog-writer</code> example in the repository.</p>
+    </div>
+  </section>
+
+  <section class="chapter chapter-long copy-left" data-pose="pipeline" data-tint="blue" style="--accent: var(--blue)">
+    <div class="copy">
+      <p class="eyebrow">Inside the package</p>
+      <h2>What happens to every message.</h2>
+      <ol class="steps">
+        <li><b>Adapter</b><span>Receives the platform update and parses it into an <code>IncomingMessage</code>.</span></li>
+        <li><b>SessionManager</b><span>Locks the user and maps them to their ADK session.</span></li>
+        <li><b>MessageProcessor</b><span>Builds the content your agent receives, including photos, documents and voice labels.</span></li>
+        <li><b>ADK Runner</b><span>Runs your agent, its tools and its sub-agents.</span></li>
+        <li><b>ResponseFormatter</b><span>Splits the final reply into chunks that fit the message limit.</span></li>
+        <li><b>Adapter</b><span>Delivers the reply in the platform's own format.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="chapter copy-right" data-pose="extend" data-tint="green" style="--accent: var(--green)">
+    <div class="copy">
+      <p class="eyebrow">adk_connectors.base_adapter</p>
+      <h2>Add a platform in five methods.</h2>
+      <p>Every connector implements the same small interface. Write these five methods and the sessions, streaming and formatting come with them.</p>
+      <pre class="code" tabindex="0"><code><span class="k">class</span> SlackAdapter(BaseAdapter):
+    platform = <span class="s">"slack"</span>
+
+    <span class="k">async def</span> start(self): ...
+    <span class="k">async def</span> stop(self): ...
+    <span class="k">async def</span> send_message(self, chat_id, message): ...
+    <span class="k">async def</span> edit_message(
+        self, chat_id, message_id, new_content
+    ): ...
+    <span class="k">async def</span> set_typing_indicator(self, chat_id): ...</code></pre>
+      <p class="note">Sessions can live in memory or a JSON file. Implement <code>get</code>, <code>set</code> and <code>delete</code> on <code>SessionStorage</code> to use your own database. An official Slack connector is planned.</p>
+    </div>
+  </section>
+
+  <section class="chapter finale copy-left" data-pose="install" data-tint="blue" style="--accent: var(--blue)">
+    <div class="copy">
+      <p class="eyebrow">Get started</p>
+      <h2>Ship your agent today.</h2>
+      <div class="commands">
+        <button class="install" type="button" data-copy='pip install "adk-connector[all]"'>
+          <span class="lang">Python</span><code>pip install "adk-connector[all]"</code><span data-copy-label>Copy</span>
+        </button>
+        <button class="install" type="button" data-copy="npm install adk-connector-js">
+          <span class="lang">Node.js</span><code>npm install adk-connector-js</code><span data-copy-label>Copy</span>
+        </button>
+      </div>
+      <p>Set <code>GOOGLE_API_KEY</code> and your bot token, wrap your agent, and start it. Python 3.10+ is required, or Node.js 18+ for TypeScript.</p>
+      <div class="actions">
+        <a class="link-button solid" href="https://github.com/Harshk133/adk-connector#readme">Read the docs</a>
+        <a class="link-button" href="https://adk.dev/integrations/adk-connector/">See it on adk.dev</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>ADK Connectors is MIT licensed. Created by Harsh Kale and contributors.</p>
+  <p>An independent open source project. Google ADK is a project of Google.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

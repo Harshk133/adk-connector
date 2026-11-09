@@ -15,9 +15,11 @@
    <a href="https://pepy.tech/projects/adk-connector"><img src="https://static.pepy.tech/personalized-badge/adk-connector?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" alt="PyPI Downloads"></a>
 </p>
 
-**ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, WhatsApp, and Slack. 
+**ADK Connectors** is a plug-and-play toolkit that wraps any [Google Agent Development Kit (ADK)](https://github.com/google/adk) agent and exposes it as a chatbot on Telegram, Discord, and WhatsApp. 
 
 By adding just a few lines of code, you can bridge the gap between local development, testing, and production messaging platforms.
+
+**[Take the interactive 3D tour of the package →](https://harshk133.github.io/adk-connector/)**
 
 ---
 
@@ -39,7 +41,7 @@ Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.
 * 💾 **Automatic Database Engine Setup**: Transparently spins up an asynchronous SQLite backend to record session states, events, and tool invocations.
 * 🔒 **Local Persistent Mapping**: Uses a secure, local JSON mapping engine so restarting the bot never breaks session IDs or active chats.
 * 🎙️ **Telegram Voice Messages**: Plug in your own speech-to-text and text-to-speech functions so users can talk to your agent and hear it reply.
-* 🧩 **Extensible Architecture**: Structured to support multiple providers (Telegram, Discord, and future modules for WhatsApp and Slack).
+* 🧩 **Extensible Architecture**: Structured to support multiple providers (Telegram, Discord, and WhatsApp today, with Slack planned).
 
 ---
 
