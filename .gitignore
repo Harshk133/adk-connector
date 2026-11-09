@@ -21,4 +21,5 @@ node_modules/
 auth/
 .adk/
 ideas.md
-whatsapp.md
+whatsapp.md
+*.blend1
