@@ -726,6 +726,24 @@ async def test_voice_delivery_failure_still_delivers_text():
     assert VOICE_TEST_TOKEN not in "".join(texts)
 
 
+@pytest.mark.asyncio
+async def test_agent_error_reply_does_not_expose_details():
+    import json
+
+    class FailingRunner:
+        async def run_async(self, user_id, session_id, new_message):
+            raise RuntimeError(f"failed: https://api.telegram.org/bot{VOICE_TEST_TOKEN}/sendMessage")
+            yield
+
+    api = FakeTelegramApi()
+    manager = _voice_manager(api, FailingRunner())
+    await manager.handle_incoming_message(TelegramParser.parse_update(_voice_update()))
+
+    texts = [json.loads(body)["text"] for body in api.named("sendMessage")]
+    assert len(texts) == 1
+    assert VOICE_TEST_TOKEN not in texts[0]
+
+
 def test_connector_warns_when_voice_hooks_cannot_apply(caplog):
     with caplog.at_level("WARNING", logger="adk_connectors.telegram"):
         TelegramConnector(token="t", voice_synthesizer=_synthesize)

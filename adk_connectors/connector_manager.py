@@ -560,9 +560,11 @@ class ConnectorManager:
 
 
                                     
-            except Exception as e:
+            except Exception:
+                # Exception text can contain the bot token (httpx embeds request URLs),
+                # so details go to the logs only and never into the chat.
                 logger.exception("Error running ADK agent")
                 await adapter.send_message(
                     message.chat_id,
-                    OutgoingMessage(chat_id=message.chat_id, text=f"⚠️ Error occurred while processing message: {str(e)}")
+                    OutgoingMessage(chat_id=message.chat_id, text="⚠️ Sorry, something went wrong while processing your message. Please try again.")
                 )
