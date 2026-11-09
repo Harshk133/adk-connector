@@ -15,6 +15,9 @@ from adk_connectors.storage.memory import MemorySessionStorage
 
 logger = logging.getLogger("adk_connectors")
 
+# Telegram rejects voice notes whose caption exceeds this many characters.
+VOICE_CAPTION_LIMIT = 1024
+
 def _find_all_placeholders(agent) -> set[str]:
     placeholders = set()
     instruction = getattr(agent, "instruction", None)
@@ -501,22 +504,28 @@ class ConnectorManager:
                         except Exception as se:
                             logger.error(f"Voice synthesis hook failed: {se}")
 
-                    if audio_bytes and hasattr(adapter, "send_voice"):
-                        if sent_message_id:
-                            try:
-                                await adapter.edit_message(
-                                    chat_id=message.chat_id,
-                                    message_id=sent_message_id,
-                                    new_content=final_text
-                                )
-                            except Exception:
-                                pass
-                        await adapter.send_voice(
-                            chat_id=message.chat_id,
-                            voice=audio_bytes,
-                            caption=final_text
-                        )
-                    else:
+                    can_send_voice = bool(audio_bytes) and hasattr(adapter, "send_voice")
+                    # A short reply can ride along as the voice caption. Longer or
+                    # already-streamed replies go through normal text delivery so
+                    # they are neither rejected by the caption limit nor duplicated.
+                    text_in_caption = (
+                        can_send_voice
+                        and not sent_message_id
+                        and len(final_text) <= VOICE_CAPTION_LIMIT
+                    )
+                    if text_in_caption:
+                        try:
+                            await adapter.send_voice(
+                                chat_id=message.chat_id,
+                                voice=audio_bytes,
+                                caption=final_text
+                            )
+                        except Exception as ve:
+                            logger.error(f"Voice delivery failed, sending text instead: {ve}")
+                            text_in_caption = False
+                            can_send_voice = False
+
+                    if not text_in_caption:
                         if not sent_message_id:
                             for out_msg in out_messages:
                                 await adapter.send_message(message.chat_id, out_msg)
@@ -531,7 +540,16 @@ class ConnectorManager:
                             # Send any remaining chunks as new messages
                             for out_msg in out_messages[1:]:
                                 await adapter.send_message(message.chat_id, out_msg)
-                    
+
+                        if can_send_voice:
+                            try:
+                                await adapter.send_voice(
+                                    chat_id=message.chat_id,
+                                    voice=audio_bytes
+                                )
+                            except Exception as ve:
+                                logger.error(f"Voice delivery failed: {ve}")
+
                     await self.session_manager.update(session)
 
                     if self.on_turn_completed:

@@ -11,6 +11,14 @@ from adk_connectors.telegram.formatter import TelegramFormatter
 
 logger = logging.getLogger("adk_connectors.telegram")
 
+
+def _token_safe_error(operation: str, error: httpx.HTTPError) -> RuntimeError:
+    """Describe an httpx failure without its message, which embeds the bot token URL."""
+    response = getattr(error, "response", None)
+    detail = f"HTTP {response.status_code}" if response is not None else type(error).__name__
+    return RuntimeError(f"Telegram {operation} failed: {detail}")
+
+
 class TelegramAdapter(BaseAdapter):
     platform = "telegram"
 
@@ -119,29 +127,35 @@ class TelegramAdapter(BaseAdapter):
         if reply_to_message_id:
             data["reply_to_message_id"] = int(reply_to_message_id)
 
-        if isinstance(voice, (bytes, bytearray)):
-            files = {"voice": ("voice.ogg", bytes(voice), "audio/ogg")}
-            res = await self.client.post("/sendVoice", data=data, files=files)
-        else:
-            data["voice"] = str(voice)
-            res = await self.client.post("/sendVoice", data=data)
+        try:
+            if isinstance(voice, (bytes, bytearray)):
+                files = {"voice": ("voice.ogg", bytes(voice), "audio/ogg")}
+                res = await self.client.post("/sendVoice", data=data, files=files, timeout=60.0)
+            else:
+                data["voice"] = str(voice)
+                res = await self.client.post("/sendVoice", data=data, timeout=60.0)
+            res.raise_for_status()
+        except httpx.HTTPError as e:
+            raise _token_safe_error("sendVoice", e) from None
 
-        res.raise_for_status()
         return res.json().get("result", {})
 
     async def download_file(self, file_id: str) -> bytes:
         """Download raw bytes of a file from Telegram using getFile."""
-        res = await self.client.post("/getFile", json={"file_id": file_id})
-        res.raise_for_status()
-        file_path = res.json().get("result", {}).get("file_path")
-        if not file_path:
-            raise ValueError(f"File path not found in Telegram getFile response for file_id: {file_id}")
+        try:
+            res = await self.client.post("/getFile", json={"file_id": file_id})
+            res.raise_for_status()
+            file_path = res.json().get("result", {}).get("file_path")
+            if not file_path:
+                raise ValueError(f"File path not found in Telegram getFile response for file_id: {file_id}")
 
-        file_url = f"https://api.telegram.org/file/bot{self.config.token}/{file_path}"
-        async with httpx.AsyncClient() as dl_client:
-            dl_res = await dl_client.get(file_url, timeout=30.0)
-            dl_res.raise_for_status()
-            return dl_res.content
+            file_url = f"https://api.telegram.org/file/bot{self.config.token}/{file_path}"
+            async with httpx.AsyncClient() as dl_client:
+                dl_res = await dl_client.get(file_url, timeout=30.0)
+                dl_res.raise_for_status()
+                return dl_res.content
+        except httpx.HTTPError as e:
+            raise _token_safe_error("file download", e) from None
 
     async def edit_message(self, chat_id: str, message_id: str, new_content: str) -> Dict[str, Any]:
         escaped_content = TelegramFormatter.markdown_to_html(new_content)

@@ -461,6 +461,277 @@ def test_multi_platform_connector_registration():
         manager.register_platform("invalid_platform_type")
 
 
+# --- Telegram voice support ---
+
+VOICE_TEST_TOKEN = "123456:SECRET-BOT-TOKEN"
+
+
+class FakeTelegramApi:
+    """httpx mock transport handler enforcing Telegram's real size limits."""
+
+    def __init__(self, fail_voice=False, download_status=200):
+        self.fail_voice = fail_voice
+        self.download_status = download_status
+        self.calls = []
+
+    def named(self, method):
+        return [body for name, body in self.calls if name == method]
+
+    def __call__(self, request):
+        import json
+        import re
+        import httpx
+
+        method = request.url.path.rsplit("/", 1)[-1]
+        if "/file/bot" in request.url.path:
+            if self.download_status != 200:
+                return httpx.Response(self.download_status, request=request)
+            return httpx.Response(200, content=b"ogg-input", request=request)
+
+        body = request.content
+        self.calls.append((method, body))
+
+        if method == "sendVoice":
+            caption = re.search(rb'name="caption"\r\n\r\n(.*?)\r\n--', body, re.DOTALL)
+            too_long = caption is not None and len(caption.group(1).decode()) > 1024
+            if self.fail_voice or too_long:
+                return httpx.Response(400, json={"ok": False}, request=request)
+        if method == "sendMessage" and len(json.loads(body)["text"]) > 4096:
+            return httpx.Response(400, json={"ok": False}, request=request)
+        if method == "getFile":
+            return httpx.Response(
+                200, json={"ok": True, "result": {"file_path": "voice/1.oga"}}, request=request
+            )
+        message_id = len(self.calls)
+        return httpx.Response(
+            200, json={"ok": True, "result": {"message_id": message_id}}, request=request
+        )
+
+
+def _telegram_adapter(api):
+    import httpx
+    from adk_connectors.telegram.adapter import TelegramAdapter
+    from adk_connectors.telegram.config import TelegramConfig
+
+    adapter = TelegramAdapter(TelegramConfig(token=VOICE_TEST_TOKEN))
+    adapter.client = httpx.AsyncClient(
+        base_url=f"https://api.telegram.org/bot{VOICE_TEST_TOKEN}",
+        transport=httpx.MockTransport(api),
+    )
+    return adapter
+
+
+def _patched_download_client(api):
+    import httpx
+    from unittest.mock import patch
+
+    real_client = httpx.AsyncClient
+    return patch(
+        "adk_connectors.telegram.adapter.httpx.AsyncClient",
+        lambda **kwargs: real_client(transport=httpx.MockTransport(api), **kwargs),
+    )
+
+
+class _FakeRunner:
+    def __init__(self, *replies, partial=None):
+        self.replies = replies
+        self.partial = partial
+        self.inputs = []
+
+    async def run_async(self, user_id, session_id, new_message):
+        from google.adk.events.event import Event
+        from google.genai import types
+
+        self.inputs.append(new_message.parts[0].text)
+        if self.partial:
+            yield Event(
+                author="agent", partial=True,
+                content=types.Content(parts=[types.Part.from_text(text=self.partial)]),
+            )
+        for reply in self.replies:
+            yield Event(
+                author="agent", partial=False,
+                content=types.Content(parts=[types.Part.from_text(text=reply)]),
+            )
+
+
+def _voice_manager(api, runner, **hooks):
+    from adk_connectors import ConnectorManager
+    from google.adk.agents.llm_agent import Agent
+
+    manager = ConnectorManager(agent=Agent(name="test_agent", model="gemini-2.0-flash"), **hooks)
+    manager.register_adapter(_telegram_adapter(api))
+    manager._runner = runner
+    return manager
+
+
+def _voice_update():
+    return {
+        "update_id": 1,
+        "message": {
+            "message_id": 10,
+            "from": {"id": 111},
+            "chat": {"id": 222, "type": "private"},
+            "voice": {"file_id": "voice-file-id", "duration": 2},
+        },
+    }
+
+
+async def _synthesize(text, message):
+    return b"ogg-output"
+
+
+@pytest.mark.parametrize("field", ["voice", "audio"])
+def test_telegram_parser_extracts_voice_file_id(field):
+    from adk_connectors.models.incoming import MediaType
+
+    update = _voice_update()
+    update["message"][field] = update["message"].pop("voice")
+    parsed = TelegramParser.parse_update(update)
+    assert parsed.media_type == MediaType.VOICE
+    assert parsed.media_url == "voice-file-id"
+
+
+@pytest.mark.asyncio
+async def test_send_voice_uploads_bytes_as_multipart():
+    api = FakeTelegramApi()
+    result = await _telegram_adapter(api).send_voice(
+        chat_id="222", voice=b"ogg-bytes", caption="**hi**", reply_to_message_id="7"
+    )
+    body = api.named("sendVoice")[0]
+    assert result["message_id"] == 1
+    assert b'filename="voice.ogg"' in body and b"ogg-bytes" in body
+    assert b"<b>hi</b>" in body
+
+
+@pytest.mark.asyncio
+async def test_send_message_routes_voice_payloads():
+    from adk_connectors.models.outgoing import OutgoingMessage
+
+    api = FakeTelegramApi()
+    adapter = _telegram_adapter(api)
+    await adapter.send_message(
+        "222", OutgoingMessage(chat_id="222", text="", media_type="voice", media_bytes=b"raw")
+    )
+    await adapter.send_message(
+        "222", OutgoingMessage(chat_id="222", text="", media_type="voice", media_url="file-123")
+    )
+    voice_calls = api.named("sendVoice")
+    assert len(voice_calls) == 2
+    assert b"raw" in voice_calls[0]
+    assert b"voice=file-123" in voice_calls[1]
+
+
+@pytest.mark.asyncio
+async def test_download_file_returns_bytes():
+    api = FakeTelegramApi()
+    adapter = _telegram_adapter(api)
+    with _patched_download_client(api):
+        assert await adapter.download_file("voice-file-id") == b"ogg-input"
+
+
+@pytest.mark.asyncio
+async def test_download_file_error_does_not_expose_token():
+    api = FakeTelegramApi(download_status=404)
+    adapter = _telegram_adapter(api)
+    with _patched_download_client(api), pytest.raises(Exception) as exc_info:
+        await adapter.download_file("voice-file-id")
+    assert VOICE_TEST_TOKEN not in str(exc_info.value)
+    assert "HTTP 404" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_voice_turn_transcribes_replies_and_reports_completion():
+    api = FakeTelegramApi()
+    runner = _FakeRunner("short reply")
+    completed = []
+
+    async def transcribe(audio, message):
+        assert audio == b"ogg-input"
+        return "write a blog about ADK"
+
+    async def on_turn(message, text, voice_in, voice_out):
+        completed.append((text, voice_in, voice_out))
+
+    manager = _voice_manager(
+        api, runner, voice_transcriber=transcribe,
+        voice_synthesizer=_synthesize, on_turn_completed=on_turn,
+    )
+    with _patched_download_client(api):
+        await manager.handle_incoming_message(TelegramParser.parse_update(_voice_update()))
+
+    assert runner.inputs == ["write a blog about ADK"]
+    assert len(api.named("sendVoice")) == 1
+    assert b"short reply" in api.named("sendVoice")[0]
+    assert api.named("sendMessage") == []
+    assert completed == [("short reply", b"ogg-input", b"ogg-output")]
+
+
+@pytest.mark.asyncio
+async def test_failed_transcription_falls_back_to_placeholder():
+    api = FakeTelegramApi()
+    runner = _FakeRunner("ok")
+
+    async def transcribe(audio, message):
+        raise RuntimeError("stt offline")
+
+    manager = _voice_manager(api, runner, voice_transcriber=transcribe)
+    with _patched_download_client(api):
+        await manager.handle_incoming_message(TelegramParser.parse_update(_voice_update()))
+
+    assert runner.inputs == ["[Voice Message]"]
+    assert len(api.named("sendMessage")) == 1
+
+
+@pytest.mark.asyncio
+async def test_long_reply_is_delivered_as_text_plus_uncaptioned_voice():
+    import json
+
+    api = FakeTelegramApi()
+    long_reply = "A blog paragraph about agents. " * 300  # ~9300 chars
+    manager = _voice_manager(api, _FakeRunner(long_reply), voice_synthesizer=_synthesize)
+    await manager.handle_incoming_message(TelegramParser.parse_update(_voice_update()))
+
+    delivered = " ".join(json.loads(body)["text"] for body in api.named("sendMessage"))
+    assert delivered.split() == long_reply.split()
+    assert len(api.named("sendVoice")) == 1
+    assert b'name="caption"' not in api.named("sendVoice")[0]
+
+
+@pytest.mark.asyncio
+async def test_streamed_reply_is_not_duplicated_in_voice_caption():
+    import json
+
+    api = FakeTelegramApi()
+    manager = _voice_manager(
+        api, _FakeRunner("final answer", partial="final"), voice_synthesizer=_synthesize
+    )
+    await manager.handle_incoming_message(TelegramParser.parse_update(_voice_update()))
+
+    edits = api.named("editMessageText")
+    assert len(edits) == 1 and json.loads(edits[0])["text"] == "final answer"
+    assert b'name="caption"' not in api.named("sendVoice")[0]
+
+
+@pytest.mark.asyncio
+async def test_voice_delivery_failure_still_delivers_text():
+    import json
+
+    api = FakeTelegramApi(fail_voice=True)
+    manager = _voice_manager(api, _FakeRunner("short reply"), voice_synthesizer=_synthesize)
+    await manager.handle_incoming_message(TelegramParser.parse_update(_voice_update()))
+
+    texts = [json.loads(body)["text"] for body in api.named("sendMessage")]
+    assert texts == ["short reply"]
+    assert VOICE_TEST_TOKEN not in "".join(texts)
+
+
+def test_connector_warns_when_voice_hooks_cannot_apply(caplog):
+    with caplog.at_level("WARNING", logger="adk_connectors.telegram"):
+        TelegramConnector(token="t", voice_synthesizer=_synthesize)
+    assert "voice" in caplog.text.lower()
+
+
 
 
 

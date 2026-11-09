@@ -56,6 +56,11 @@ class TelegramConnector:
             self.manager.register_adapter(self.adapter)
         else:
             self.manager = None
+            if voice_transcriber or voice_synthesizer or on_turn_completed:
+                logger.warning(
+                    "Voice hooks passed to a TelegramConnector without an agent are ignored. "
+                    "Pass them to the central ConnectorManager instead."
+                )
 
     def start(self) -> None:
         """
