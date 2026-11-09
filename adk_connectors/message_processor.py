@@ -19,7 +19,7 @@ class MessageProcessor:
             name = message.file_name or "unnamed"
             text = f"[Document: {name}] {text}" if text else f"[Document: {name}]"
         elif message.media_type == MediaType.VOICE:
-            text = f"[Voice Message] {text}" if text else "[Voice Message]"
+            text = text or "[Voice Message]"
 
         if genai_types is not None:
             return genai_types.Content(

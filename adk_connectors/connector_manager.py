@@ -9,7 +9,7 @@ from adk_connectors.session_manager import SessionManager
 from adk_connectors.message_processor import MessageProcessor
 from adk_connectors.response_formatter import ResponseFormatter
 from adk_connectors.config import ConnectorConfig
-from adk_connectors.models.incoming import IncomingMessage
+from adk_connectors.models.incoming import IncomingMessage, MediaType
 from adk_connectors.models.outgoing import OutgoingMessage
 from adk_connectors.storage.memory import MemorySessionStorage
 
@@ -69,10 +69,16 @@ class ConnectorManager:
         session_management_across_device: bool = False,
         dev_user_id: Optional[str] = None,
         platforms: Optional[List[Any]] = None,
+        voice_transcriber: Optional[Any] = None,
+        voice_synthesizer: Optional[Any] = None,
+        on_turn_completed: Optional[Any] = None,
     ):
         self.agent = agent
         self.config = config or ConnectorConfig()
         self.app_name = app_name
+        self.voice_transcriber = voice_transcriber
+        self.voice_synthesizer = voice_synthesizer
+        self.on_turn_completed = on_turn_completed
         
         # Automatic environment setup for cross-device session management
         if session_management_across_device:
@@ -361,6 +367,18 @@ class ConnectorManager:
             
             await adapter.set_typing_indicator(message.chat_id)
             
+            raw_voice_bytes = None
+            if message.media_type == MediaType.VOICE and self.voice_transcriber:
+                try:
+                    file_id = message.media_url or message.file_name
+                    if file_id and hasattr(adapter, "download_file"):
+                        raw_voice_bytes = await adapter.download_file(file_id)
+                        transcription = await self.voice_transcriber(raw_voice_bytes, message)
+                        if transcription:
+                            message.text = transcription
+                except Exception as ve:
+                    logger.error(f"Voice transcription hook failed: {ve}")
+
             processed_input = await self.message_processor.process(message)
             runner = self._get_runner()
             
@@ -475,22 +493,52 @@ class ConnectorManager:
                         text=final_text
                     )
                     
-                    if not sent_message_id:
-                        for out_msg in out_messages:
-                            await adapter.send_message(message.chat_id, out_msg)
-                    else:
-                        # Edit the placeholder with the first chunk
-                        first_msg = out_messages[0]
-                        await adapter.edit_message(
+                    # Voice output synthesis hook
+                    audio_bytes = None
+                    if self.voice_synthesizer:
+                        try:
+                            audio_bytes = await self.voice_synthesizer(final_text, message)
+                        except Exception as se:
+                            logger.error(f"Voice synthesis hook failed: {se}")
+
+                    if audio_bytes and hasattr(adapter, "send_voice"):
+                        if sent_message_id:
+                            try:
+                                await adapter.edit_message(
+                                    chat_id=message.chat_id,
+                                    message_id=sent_message_id,
+                                    new_content=final_text
+                                )
+                            except Exception:
+                                pass
+                        await adapter.send_voice(
                             chat_id=message.chat_id,
-                            message_id=sent_message_id,
-                            new_content=first_msg.text
+                            voice=audio_bytes,
+                            caption=final_text
                         )
-                        # Send any remaining chunks as new messages
-                        for out_msg in out_messages[1:]:
-                            await adapter.send_message(message.chat_id, out_msg)
+                    else:
+                        if not sent_message_id:
+                            for out_msg in out_messages:
+                                await adapter.send_message(message.chat_id, out_msg)
+                        else:
+                            # Edit the placeholder with the first chunk
+                            first_msg = out_messages[0]
+                            await adapter.edit_message(
+                                chat_id=message.chat_id,
+                                message_id=sent_message_id,
+                                new_content=first_msg.text
+                            )
+                            # Send any remaining chunks as new messages
+                            for out_msg in out_messages[1:]:
+                                await adapter.send_message(message.chat_id, out_msg)
                     
                     await self.session_manager.update(session)
+
+                    if self.on_turn_completed:
+                        try:
+                            await self.on_turn_completed(message, final_text, raw_voice_bytes, audio_bytes)
+                        except Exception as te:
+                            logger.error(f"on_turn_completed callback error: {te}")
 
 
                                     

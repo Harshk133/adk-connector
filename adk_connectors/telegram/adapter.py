@@ -77,10 +77,71 @@ class TelegramAdapter(BaseAdapter):
                 await asyncio.sleep(self.config.poll_interval)
 
     async def send_message(self, chat_id: str, message: OutgoingMessage) -> Dict[str, Any]:
+        if message.media_type == "voice":
+            if message.media_bytes:
+                return await self.send_voice(
+                    chat_id=chat_id,
+                    voice=message.media_bytes,
+                    caption=message.text if message.text else None,
+                    reply_to_message_id=message.reply_to_message_id,
+                )
+            elif message.media_url:
+                return await self.send_voice(
+                    chat_id=chat_id,
+                    voice=message.media_url,
+                    caption=message.text if message.text else None,
+                    reply_to_message_id=message.reply_to_message_id,
+                )
         payload = TelegramFormatter.to_api_payload(message)
         res = await self.client.post("/sendMessage", json=payload)
         res.raise_for_status()
         return res.json().get("result", {})
+
+    async def send_voice(
+        self,
+        chat_id: str,
+        voice: bytes | str,
+        caption: Optional[str] = None,
+        duration: Optional[int] = None,
+        reply_to_message_id: Optional[str] = None,
+        disable_notification: bool = False,
+    ) -> Dict[str, Any]:
+        """Send an audio voice note to a Telegram chat."""
+        data: Dict[str, Any] = {
+            "chat_id": chat_id,
+            "disable_notification": disable_notification,
+        }
+        if caption:
+            data["caption"] = TelegramFormatter.markdown_to_html(caption)
+            data["parse_mode"] = "HTML"
+        if duration is not None:
+            data["duration"] = duration
+        if reply_to_message_id:
+            data["reply_to_message_id"] = int(reply_to_message_id)
+
+        if isinstance(voice, (bytes, bytearray)):
+            files = {"voice": ("voice.ogg", bytes(voice), "audio/ogg")}
+            res = await self.client.post("/sendVoice", data=data, files=files)
+        else:
+            data["voice"] = str(voice)
+            res = await self.client.post("/sendVoice", data=data)
+
+        res.raise_for_status()
+        return res.json().get("result", {})
+
+    async def download_file(self, file_id: str) -> bytes:
+        """Download raw bytes of a file from Telegram using getFile."""
+        res = await self.client.post("/getFile", json={"file_id": file_id})
+        res.raise_for_status()
+        file_path = res.json().get("result", {}).get("file_path")
+        if not file_path:
+            raise ValueError(f"File path not found in Telegram getFile response for file_id: {file_id}")
+
+        file_url = f"https://api.telegram.org/file/bot{self.config.token}/{file_path}"
+        async with httpx.AsyncClient() as dl_client:
+            dl_res = await dl_client.get(file_url, timeout=30.0)
+            dl_res.raise_for_status()
+            return dl_res.content
 
     async def edit_message(self, chat_id: str, message_id: str, new_content: str) -> Dict[str, Any]:
         escaped_content = TelegramFormatter.markdown_to_html(new_content)
