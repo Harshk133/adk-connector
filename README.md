@@ -38,6 +38,7 @@ Below is a walkthrough showing how to set up the [`adk-connector`](https://pypi.
 * 🔄 **Cross-Device Session Sync**: Sync conversations seamlessly. Chat on Telegram or Discord, then inspect and continue the exact same conversation inside the ADK Web UI (`adk web`).
 * 💾 **Automatic Database Engine Setup**: Transparently spins up an asynchronous SQLite backend to record session states, events, and tool invocations.
 * 🔒 **Local Persistent Mapping**: Uses a secure, local JSON mapping engine so restarting the bot never breaks session IDs or active chats.
+* 🎙️ **Telegram Voice Messages**: Plug in your own speech-to-text and text-to-speech functions so users can talk to your agent and hear it reply.
 * 🧩 **Extensible Architecture**: Structured to support multiple providers (Telegram, Discord, and future modules for WhatsApp and Slack).
 
 ---
@@ -329,6 +330,43 @@ if __name__ == "__main__":
 
 ---
 
+## 🎙️ Telegram Voice Messages (New in v0.5.0)
+
+Voice notes and audio files sent to your Telegram bot can be transcribed before they reach the agent, and the agent's replies can be spoken back. You bring the speech provider through three optional `async` hooks:
+
+| Hook | Signature | Purpose |
+| --- | --- | --- |
+| `voice_transcriber` | `async (audio: bytes, message) -> str \| None` | Converts incoming audio to the text sent to the agent. |
+| `voice_synthesizer` | `async (text: str, message) -> bytes \| None` | Converts the agent's reply to audio. Return OGG/Opus so Telegram shows a voice note, or `None` to reply with text only. |
+| `on_turn_completed` | `async (message, reply_text, voice_in, voice_out) -> None` | Runs after each reply, for example to log or store the turn. |
+
+```python
+from adk_connectors.telegram import TelegramConnector
+
+async def transcribe(audio: bytes, message) -> str:
+    return await my_speech_to_text(audio)
+
+async def synthesize(text: str, message) -> bytes | None:
+    # Only speak when the user spoke
+    if message.media_type != "voice":
+        return None
+    return await my_text_to_speech(text)
+
+connector = TelegramConnector(
+    token=token,
+    agent=assistant,
+    voice_transcriber=transcribe,
+    voice_synthesizer=synthesize,
+)
+connector.start()
+```
+
+* Replies of up to 1024 characters are sent as a voice note with the text as its caption. Longer or streamed replies are sent as normal text, followed by the voice note.
+* If transcription fails, the agent receives `[Voice Message]`. If synthesis or voice delivery fails, the user still gets the text reply.
+* In multi-platform setups, pass the hooks to `ConnectorManager(...)` rather than to an agent-less `TelegramConnector`.
+
+---
+
 ## 🔄 Python Advanced Setup: Session Synchronization (with `adk web`)
 
 The advanced setup enables the unified cross-device sync engine so you can chat with your bot on Telegram or Discord, and view, inspect, or continue the exact same conversation inside the local **ADK Web UI** (`adk web`).
@@ -399,6 +437,7 @@ Running multi-agent code directly as a script (`python -m package.module`) often
 - [x] **Telegram Connector** (v0.1.0)
 - [x] **Discord Connector** (v0.2.2)
 - [x] **WhatsApp Connector** (v0.3.0)
+- [x] **Telegram Voice Messages** (v0.5.0)
 - [ ] **Slack Connector** (Planned)
 
 ---
